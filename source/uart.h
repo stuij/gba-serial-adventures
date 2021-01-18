@@ -1,8 +1,10 @@
 #include <tonc.h>
 
 void init_uart(unsigned short UART);
-unsigned char rcv_char(void);
-void snd_char(unsigned char Character);
+int rcv_char(void);
+void snd_char(int character);
+
+#define dputchar snd_char
 
 /* These are buggered right now
 #define SIO_SET_SDHI      REG_RCNT &= 0x0020

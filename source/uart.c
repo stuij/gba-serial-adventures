@@ -15,10 +15,11 @@ void init_uart(unsigned short uart)
   // With any luck, we should now be able to talk to a PC.
 }
 
-unsigned char rcv_char(void)
+int rcv_char(void)
 {
   // Set the receive data flag to empty
   REG_SIOCNT = REG_SIOCNT | 0x0020;
+
   // We're using CTS so we must send a LO on the SD terminal to show we're ready
   REG_RCNT = REG_RCNT & (0x0020 ^ 0xFFFF);
 
@@ -26,13 +27,14 @@ unsigned char rcv_char(void)
   while(REG_SIOCNT & 0x0020);
 
   // Return the character in the data register
-  return (unsigned char)REG_SIODATA8;
+  return (int)REG_SIODATA8;
 }
 
-void snd_char(unsigned char character)
+void snd_char(int character)
 {
   // Wait until we have a CTS signal
   while(REG_RCNT & 0x0010);
+
   // Bung our byte into the data register
-  REG_SIODATA8 = character;
+  REG_SIODATA8 = (unsigned char)character;
 }
