@@ -9,8 +9,16 @@ void init_uart(unsigned short uart)
   // Now to go into UART mode
   REG_RCNT = 0;
   REG_SIOCNT = 0;
+
+  // for if you do or don't have the CTS/RTS wires
+  // see README.md
+#if FLOW_CONTROL
   REG_SIOCNT = uart | SIO_CTS | SIO_LENGTH_8 | SIO_SEND_ENABLE
              | SIO_RECV_ENABLE | SIO_USE_UART;
+#else
+  REG_SIOCNT = uart | SIO_LENGTH_8 | SIO_SEND_ENABLE
+             | SIO_RECV_ENABLE | SIO_USE_UART;
+#endif
 
   // With any luck, we should now be able to talk to a PC.
 }

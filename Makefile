@@ -3,16 +3,23 @@
 # ---------------------------------------------------------------------
 
 # --- No implicit rules ---
+
 .SUFFIXES:
 
-# --- Tonc paths ---
-# If not defined as environment var, assumed to be 2 dirs up
-export TONCCODE	?= ~/code/tonc/code
-
-include $(TONCCODE)/tonc_rules
-
 # --- Main path ---
+
 export PATH	:=	$(DEVKITARM)/bin:$(PATH)
+
+# --- tonc lib location ---
+
+TONCLIB		:= $(DEVKITARM)/../libtonc
+
+# --- flow control ---
+
+# Turn on/off flow control. For example for when either the
+# link cable doesn't have SD, SC wires or when the USB serial cable doesn't have
+# CTS/RTS wires. See README.md for more info.
+FLOW_CONTROL=1
 
 
 # ---------------------------------------------------------------------
@@ -34,8 +41,13 @@ LIBS			:= -ltonc
 BUILD			:= build
 SRCDIRS		:= source
 INCDIRS		:= include
-LIBDIRS		:= $(DEVKITARM)/../libtonc
+LIBDIRS		:= $(TONCLIB)
 
+# --- Tonc paths ---
+
+# If not defined as environment var, assumed to be current dir
+export TONCCODE	?= $(CURDIR)
+include $(TONCCODE)/tonc_rules
 
 # --- switches ---
 
@@ -62,6 +74,7 @@ CFLAGS	:= -mcpu=arm7tdmi -mtune=arm7tdmi $(ARCH) -O2
 CFLAGS	+= -Wall
 CFLAGS	+= $(INCLUDE)
 CFLAGS	+= -ffast-math -fno-strict-aliasing
+CFLAGS  += -DFLOW_CONTROL=$(FLOW_CONTROL)
 
 CXXFLAGS	:= $(CFLAGS) -fno-rtti -fno-exceptions
 
