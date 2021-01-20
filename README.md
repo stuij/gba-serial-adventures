@@ -90,41 +90,41 @@ The below schematics should hopefully make it obvious how to wire up both cables
 
 ### GBA link-port pinout
 
- _______
-/ 1 3 5 \
-| 2 4 6 |	(looking at GBA cable link-port, so not GBA itself)
-'-------'
+     _______
+    / 1 3 5 \
+    | 2 4 6 |	(looking at GBA cable link-port, so not GBA itself)
+    '-------'
 
 (colors below are taken from original Japanese blue link cable)
 
-1	VCC xxx
-2	SO  TX  red
-3	SI  RX  orange
-4	SD  RTS brown
-5	SC  CTS green
-6	GND GND blue
+    1	VCC xxx
+    2	SO  TX  red
+    3	SI  RX  orange
+    4	SD  RTS brown
+    5	SC  CTS green
+    6	GND GND blue
 
 
 ### FDTI TTL-232R-3V3 cable pinouts
 (https://www.ftdichip.com/Support/Documents/DataSheets/Cables/DS_TTL-232R_CABLES.pdf)
 
-1 GND black
-2 CTS brown
-3 VCC red
-4 TDX orange
-5 RDX yellow
-6 RTS green
+    1 GND black
+    2 CTS brown
+    3 VCC red
+    4 TDX orange
+    5 RDX yellow
+    6 RTS green
 
 
 ### GBA <-> rs232 usb cable wiring
 
-GBA                rs232 usb cable
----                ---------------
-2 SO  red --------> 5 RxD yel
-3 SI  org <-------- 4 TxD org
-4 SD  bwn --------> 2 CTS bwn
-5 SC  grn <-------- 6 RTS grn
-6 GND blu <-------> 1 GND blk
+    GBA                rs232 usb cable
+    ---                ---------------
+    2 SO  red --------> 5 RxD yel
+    3 SI  org <-------- 4 TxD org
+    4 SD  bwn --------> 2 CTS bwn
+    5 SC  grn <-------- 6 RTS grn
+    6 GND blu <-------> 1 GND blk
 
 At a minimum you can get by with GND <-> GND, SO <-> RxD, SI <-> TxD.
 
