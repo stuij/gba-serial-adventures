@@ -171,3 +171,9 @@ steps (in any order):
   https://web.archive.org/web/20050425075428/http://www.fivemouse.com/gba/
 - The console-like text behaviour was ripped from pandaforth:
   https://github.com/iansharkey/pandaforth
+
+## license
+
+This repo is distributed under the MIT license. For licensing terms, see the
+LICENSE file in the root of this repo or go to
+http://opensource.org/licenses/MIT
