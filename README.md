@@ -154,7 +154,7 @@ steps (in any order):
   two invocations of `ls /dev/tty*` with and without the cable plugged in. It's
   often on /dev/ttyUSB0.
 - start your UART program on your other computer. For Linux, screen works:
-    screen /dev/ttyUSB0 115200
+    `screen /dev/ttyUSB0 115200`
 - type away!
 
 ## todo
