@@ -153,9 +153,8 @@ steps (in any order):
 - On the terminal computer, check what port it's on. On Linux do a diff between
   two invocations of `ls /dev/tty*` with and without the cable plugged in. It's
   often on /dev/ttyUSB0.
-- start your UART program on your other computer. For Linux, screen works:
-    `screen /dev/ttyUSB0 115200`
-- type away!
+- (TODO: need to refine to input/output from/to stdin/stdout) load the python code from serial.py into a python repl (change code to correct tty).
+- execute `print_string("your string")`
 
 ## todo
 

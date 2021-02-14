@@ -21,22 +21,24 @@ int main() {
 		NULL,			        		// Default font (sys8) 
 		NULL);					      // Default renderer (se_drawg_s)
 
-  unsigned char in;
-  
+  unsigned char in[255];
+  REG_RCNT = REG_RCNT & (0x0020 ^ 0xFFFF);
 	while(1)
 	{
-		// VBlankIntrWait();
-		// key_poll();
+		/* VBlankIntrWait(); */
+		/* key_poll(); */
 
-    // if(key_hit(KEY_LEFT)) {
-    //  write_char('a');
-    // }
+    /* if(key_hit(KEY_A)) { */
+    /*   snd_uart("T", 1); */
+    /* } */
 
-    // if(key_hit(KEY_RIGHT))
-    //   write_char('\n');    
+    unsigned int size = rcv_uart(in);
 
-    in = rcv_char();
-    write_char((int)in);
-    snd_char(in);
+    for(int i = 0; i < size; i++) {
+
+      write_char((int)in[i]);
+    }
+
+    snd_uart(in, size);
   }
 }

@@ -1,8 +1,8 @@
 #include <tonc.h>
 
 void init_uart(unsigned short UART);
-int rcv_char(void);
-void snd_char(int character);
+unsigned int rcv_uart(unsigned char in[]);
+void snd_uart(unsigned char out[], unsigned int size);
 
 #define dputchar snd_char
 
