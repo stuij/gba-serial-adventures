@@ -72,7 +72,15 @@ outputs. It's usually hard to see on the pictures.
 
 ### terminal program
 
-Choose your favorite terminal program. I'm using GNU screen on Linux.
+Choose your favorite terminal program. GNU screen should work on Linux. Make sure you enable serial flow control if your cable (and the GBA program) supports it.
+
+I've wrote a simple Python terminal that is hopefully cross-platform:
+`<root>/terminal/terminal.py`
+
+Whatever you type is sent over the specified serial port after you hit
+return. The program asynchronously prints whatever the GBA sends back on the
+screen. When using the GBA example code in this repo, whatever you typed is
+simply sent back again.
 
 ### compiler toolchain
 
@@ -118,13 +126,13 @@ The below schematics should hopefully make it obvious how to wire up both cables
 
 ### GBA <-> rs232 usb cable wiring
 
-    GBA                rs232 usb cable
-    ---                ---------------
-    2 SO  red --------> 5 RxD yel
-    3 SI  org <-------- 4 TxD org
-    4 SD  bwn --------> 2 CTS bwn
-    5 SC  grn <-------- 6 RTS grn
-    6 GND blu <-------> 1 GND blk
++GBA                rs232 usb cable  oscilloscope
++---                ---------------  ------------
+2 SO TX  red ----> 5 RxD yel         purple
+3 SI RX  org <---- 4 TxD org         blue
+4 SD RTS bwn ----> 2 CTS bwn         green
+5 SC CTS grn <---- 6 RTS grn         yellow
+6 GND blu <------> 1 GND blk
 
 At a minimum you can get by with GND <-> GND, SO <-> RxD, SI <-> TxD.
 
@@ -153,21 +161,25 @@ steps (in any order):
 - On the terminal computer, check what port it's on. On Linux do a diff between
   two invocations of `ls /dev/tty*` with and without the cable plugged in. It's
   often on /dev/ttyUSB0.
-- (TODO: need to refine to input/output from/to stdin/stdout) load the python code from serial.py into a python repl (change code to correct tty).
-- execute `print_string("your string")`
+- start your favorite serial communication program or use the simplistic
+  terminal program in this repo: `<root>/terminal/terminal.py /dev/ttyUSB1`
+- type away
+- (the terminal.py program will only send data to the GBA after a `return`. The
+  GBA program will only exit the read loop after detecting a `return`. The GBA
+  will send back the bytes you've sent it)
+- (the read-buffer of the GBA program is 4096 bytes)
 
 ## todo
 
 - see how this setup holds under max load
-- use oscilloscope to see what this looks like over the wire
-- from GBA, echo proper return back, so a return doesn't go to the first column
-  of the current line
-- add simple cross-platform Python repl
+- add oscilloscope pics
 
 ## acknowledgement
 
-- The UART-specific code was slightly adapted from Adrian O'Grady:
+- The UART-specific code was initially copied from Adrian O'Grady:
   https://web.archive.org/web/20050425075428/http://www.fivemouse.com/gba/
+  Unfortunately it turns out that code was quite uninformed, so It'd be unwise
+  to use it as an example. But it was a great starting point.
 - The console-like text behaviour was ripped from pandaforth:
   https://github.com/iansharkey/pandaforth
 

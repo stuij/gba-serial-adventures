@@ -21,7 +21,7 @@ int main() {
 		NULL,			        		// Default font (sys8) 
 		NULL);					      // Default renderer (se_drawg_s)
 
-  unsigned char in[255];
+  unsigned char in[4096];
   REG_RCNT = REG_RCNT & (0x0020 ^ 0xFFFF);
 	while(1)
 	{

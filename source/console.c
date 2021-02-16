@@ -19,7 +19,7 @@ void write_char(int ch) {
 			// Clean the next colon
 			for(x=0; x<30; x++) console[row][x] = ' ';
 		}
-	} else if (ch == '\r') {
+	} else if (ch == '\n') {
 		col=0;
 		row++;
 		if (row == 20) row = 0;
