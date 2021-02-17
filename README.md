@@ -1,4 +1,4 @@
-I'm hedging my bets with this repo name. I'd want to add more serial setup tutorials. For example, I bought a bunch of Gameboy Advance wireless adaptors that I should do something with. It's just a GBA UART demo so far though.
+(I'm hedging my bets with this repo name. I'd want to add more serial setup tutorials. For example, I bought a bunch of Gameboy Advance wireless adaptors that I should do something with. It's just a GBA UART demo so far though.)
 
 # Gameboy Advance UART demo
 
@@ -75,7 +75,8 @@ outputs. It's usually hard to see on the pictures.
 Choose your favorite terminal program. GNU screen should work on Linux. Make sure you enable serial flow control if your cable (and the GBA program) supports it.
 
 I've wrote a simple Python terminal that is hopefully cross-platform:
-`<root>/terminal/terminal.py`
+
+    <root>/terminal/terminal.py -h
 
 Whatever you type is sent over the specified serial port after you hit
 return. The program asynchronously prints whatever the GBA sends back on the
@@ -126,13 +127,13 @@ The below schematics should hopefully make it obvious how to wire up both cables
 
 ### GBA <-> rs232 usb cable wiring
 
-+GBA                rs232 usb cable  oscilloscope
-+---                ---------------  ------------
-2 SO TX  red ----> 5 RxD yel         purple
-3 SI RX  org <---- 4 TxD org         blue
-4 SD RTS bwn ----> 2 CTS bwn         green
-5 SC CTS grn <---- 6 RTS grn         yellow
-6 GND blu <------> 1 GND blk
+    GBA                rs232 usb cable  oscilloscope
+    ---                ---------------  ------------
+    2 SO TX  red ----> 5 RxD yel        purple
+    3 SI RX  org <---- 4 TxD org        blue
+    4 SD RTS bwn ----> 2 CTS bwn        green
+    5 SC CTS grn <---- 6 RTS grn        yellow
+    6 GND blu <------> 1 GND blk
 
 At a minimum you can get by with GND <-> GND, SO <-> RxD, SI <-> TxD.
 
