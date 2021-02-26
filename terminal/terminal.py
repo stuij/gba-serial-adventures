@@ -10,7 +10,7 @@ ser = None
 
 def init(port, baudrate, rtscts):
     global ser
-    ser = serial.Serial(port, baudrate, timeout=None, rtscts=rtscts)
+    ser = serial.Serial(port, baudrate, timeout=1, rtscts=rtscts)
     out = threading.Thread(target = write_loop)
     out.start()
 
