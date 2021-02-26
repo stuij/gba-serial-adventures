@@ -18,8 +18,8 @@ I've tested this in two setups:
 RX (receive), TX (transmit), both the RTS and CTS control flow lines and ground
 
 This enables full flow control, but requires link cable and USB<->UART cable to
-have all the flow control lines available. Most cables of both kinds don't have
-all the wires.
+have all the flow control lines available. Most GBA and USB<->UART cables don't have
+all the wires. However GB cables will fit the GBA and (I think) always have all six.
 
 ### 3-wire setup
 
@@ -47,6 +47,7 @@ this will depend on how your client UART program behaves as well.
 
 With SIO_CTS unset, you only need RX, TX and ground.
 
+I believe/hope the code example should work with either setup.
 
 ## what do you need
 
@@ -194,7 +195,6 @@ cycles, so a byte read is about 0.005 of that, or 1/192.84. So 0.84 scanlines
 - see how this setup holds under max load
 - add oscilloscope pics
 - investigate why the computer-side doesn't respect SD being high
-- add write-complete and error handling in the UART interrupt routine
 - a receive ring buffer
 - set a read timeout
 - an alternate transfer mode with header info containing error checking and nr

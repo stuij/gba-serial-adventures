@@ -2,19 +2,15 @@
 
 void init_uart(unsigned short uart)
 {
-  // Stick a character in the data register. This stops the GBA transmitting a
-  // Character as soon as it goes into UART mode (?!?)
-  REG_SIODATA8 = 'A';
-
-  // Now to go into UART mode
+  // clear out SIO control registers
   REG_RCNT = 0;
   REG_SIOCNT = 0;
 
-  // for if you do or don't have the CTS/RTS wires
-  // see README.md
+  // If you want to enable fifo straight away, enable UART with fifo
+  // disabled as it is reset/initialized when off. On another line in the source
+  // file, set SIO_USE_FIFO to 1.
 
-  // we want fifo, but according to gbatek, fifo content is reset/initialized
-  // when SIO_USE_FIFO is disabled
+  // for if you do or don't have the CTS/RTS wires; see README.md
 #if FLOW_CONTROL
   REG_SIOCNT = uart | SIO_CTS | SIO_LENGTH_8 | SIO_SEND_ENABLE
                | SIO_RECV_ENABLE | SIO_USE_UART;
@@ -22,10 +18,6 @@ void init_uart(unsigned short uart)
   REG_SIOCNT = uart | SIO_LENGTH_8 | SIO_SEND_ENABLE
                | SIO_RECV_ENABLE | SIO_USE_UART;
 #endif
-
-  // it does seem like fifo should be transparent to the user
-  // it basically buys you 3 extra sent chars worth of cycles
-  REG_SIOCNT |=  SIO_USE_FIFO;
 
   // With any luck, we should now be able to talk to a PC.
 }
@@ -41,13 +33,12 @@ unsigned int rcv_uart(unsigned char in[])
     // sd is assumed to be low
     // wait until we have a full byte (the recv data flag will go to 0 and sd will
     // go high)
-    while(REG_SIOCNT & 0x0020);
+    while(REG_SIOCNT & SIO_RECV_DATA);
 
     // save the char from the sio data register
     last = (unsigned char)REG_SIODATA8;
     in[i] = last;
   }
-
   return i;
 }
 
@@ -56,7 +47,7 @@ void snd_uart(unsigned char out[], unsigned int size)
 {
   for(int i = 0; i < size; i++) {
     // Wait until the send queue is empty
-    while(REG_SIOCNT & 0x0010);
+    while(REG_SIOCNT & SIO_SEND_DATA);
 
     // Bung our byte into the data register
     REG_SIODATA8 = out[i];
