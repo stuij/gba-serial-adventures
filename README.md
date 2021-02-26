@@ -161,7 +161,8 @@ steps (in any order):
 - start the compiled rom on your GBA
 - On the terminal computer, check what port it's on. On Linux do a diff between
   two invocations of `ls /dev/tty*` with and without the cable plugged in. It's
-  often on /dev/ttyUSB0.
+  often on /dev/ttyUSB0. Not sure how to find out on Windows, but I believe it
+  should be `COMx`, where `x` is a number.
 - start your favorite serial communication program or use the simplistic
   terminal program in this repo: `<root>/terminal/terminal.py /dev/ttyUSB1`
 - type away
@@ -170,10 +171,34 @@ steps (in any order):
   will send back the bytes you've sent it)
 - (the read-buffer of the GBA program is 4096 bytes)
 
+## gotchas
+
+It looks like the computer-side takes a byte to respect SD being high. I'm not
+sure what component is the culprit. Perhaps it's the FDTI chip in the cable,
+perhaps it's the serial tty setting in the OS. I do see this behaviour both in
+the Emacs UART client as well as with PySerial used by the Python terminal app.
+
+## CPU budget per UART char received
+
+Some perspective on how many instructions can be processed in the time it takes
+one byte to send: At a baud rate of 115200, it takes 8.68 usec for 1 bit to
+transfer. So 8 bits plus one start and one stop bit will take 86.8 usec to
+transfer. The CPU frequency of the GBA is 16.78 Mhz, or 59.59 nsec per
+instruction. So running at UART line speed, we have 1,456.62 of instructions to
+play with between UART data register reads. A screen refresh takes 280,896
+cycles, so a byte read is about 0.005 of that, or 1/192.84. So 0.84 scanlines
+(including vblank).
+
 ## todo
 
 - see how this setup holds under max load
 - add oscilloscope pics
+- investigate why the computer-side doesn't respect SD being high
+- add write-complete and error handling in the UART interrupt routine
+- a receive ring buffer
+- set a read timeout
+- an alternate transfer mode with header info containing error checking and nr
+  of bytes to read/send instead of searching for a newline
 
 ## acknowledgement
 
