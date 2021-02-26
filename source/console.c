@@ -1,4 +1,5 @@
 #include <tonc.h>
+#include "stdio.h"
 
 // Console Data
 u16 console[20][30];
@@ -54,3 +55,13 @@ void write_char(int ch) {
 		}
 	}
 }
+
+void write_line(const char* line) {
+  while (*line) write_char((int)(*line++));
+}
+
+  // TODO: this is practically an implementation of a console printf
+  // char str[20];
+  // sprintf(str, "%x\n", REG_SIOCNT);
+  // write_line(str);
+
