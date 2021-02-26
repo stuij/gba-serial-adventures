@@ -12,13 +12,20 @@ void init_uart(unsigned short uart)
 
   // for if you do or don't have the CTS/RTS wires
   // see README.md
+
+  // we want fifo, but according to gbatek, fifo content is reset/initialized
+  // when SIO_USE_FIFO is disabled
 #if FLOW_CONTROL
   REG_SIOCNT = uart | SIO_CTS | SIO_LENGTH_8 | SIO_SEND_ENABLE
-             | SIO_RECV_ENABLE | SIO_USE_UART;
+               | SIO_RECV_ENABLE | SIO_USE_UART;
 #else
   REG_SIOCNT = uart | SIO_LENGTH_8 | SIO_SEND_ENABLE
-             | SIO_RECV_ENABLE | SIO_USE_UART;
+               | SIO_RECV_ENABLE | SIO_USE_UART;
 #endif
+
+  // it does seem like fifo should be transparent to the user
+  // it basically buys you 3 extra sent chars worth of cycles
+  REG_SIOCNT |=  SIO_USE_FIFO;
 
   // With any luck, we should now be able to talk to a PC.
 }
