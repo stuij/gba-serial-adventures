@@ -3,13 +3,31 @@
 #include "console.h"
 #include "uart.h"
 
-int main() {
-	irq_init(NULL);
-	irq_add(II_VBLANK, NULL);
-	REG_DISPCNT= DCNT_MODE0 | DCNT_BG0;
+// uart IRQ routine
+void handle_uart() {
+  // TODO: dispatch on interrupt signal:
+  // - incoming byte
+  // - done sending
+  // - SIO error handling
+  if (!(REG_SIOCNT & 0x0020)) {
+    // reserve an arbitrary amount of bytes for the rcv buffer
+    unsigned char in[4096];
+    unsigned int size = rcv_uart(in);
 
+    // null-terminating so we can print to the console with write_line
+    in[size] = 0;
+    write_line((char*) in);
+
+    // send line back over serial line
+    snd_uart(in, size);
+  }
+}
+
+int main() {
   // Set to UART mode
   init_uart(SIO_BAUD_115200);
+
+	REG_DISPCNT= DCNT_MODE0 | DCNT_BG0;
   
 	// Base TTE init for tilemaps
 	tte_init_se(
@@ -21,24 +39,20 @@ int main() {
 		NULL,			        		// Default font (sys8) 
 		NULL);					      // Default renderer (se_drawg_s)
 
-  unsigned char in[4096];
-  REG_RCNT = REG_RCNT & (0x0020 ^ 0xFFFF);
+  write_line(".. and now we wait ..\n\n\n\n\n\n\n\n\n\n\n\n\n\n");
+
+	irq_init(NULL);
+  irq_add(II_SERIAL, handle_uart);
+	irq_add(II_VBLANK, NULL);
+
 	while(1)
 	{
-		/* VBlankIntrWait(); */
-		/* key_poll(); */
+		VBlankIntrWait();
+		key_poll();
 
-    /* if(key_hit(KEY_A)) { */
-    /*   snd_uart("T", 1); */
-    /* } */
-
-    unsigned int size = rcv_uart(in);
-
-    for(int i = 0; i < size; i++) {
-
-      write_char((int)in[i]);
+    if(key_hit(KEY_A)) {
+      write_line("That tickles!\nStop pressing A please..\n");
     }
-
-    snd_uart(in, size);
   }
 }
+
