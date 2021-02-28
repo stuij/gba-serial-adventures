@@ -3,6 +3,45 @@
 #include "console.h"
 #include "uart.h"
 
+// registers for print
+// SIO_CNT
+struct reg_field siocnt_fields[] = {
+  { 2, "baud rate" },
+  { 1, "cts" },
+  { 1, "parity"},
+  { 1, "snd flag"},
+  { 1, "rcv flag"},
+  { 1, "error flag"},
+  { 1, "data length"},
+  { 1, "fifo enable"},
+  { 1, "par enable"},
+  { 1, "snd enable"},
+  { 1, "rcv enable"},
+  { 1, "must be 1"},
+  { 1, "must be 1"},
+  { 1, "irq enable"},
+  { 1, "not used, 0"},
+};
+
+struct reg siocnt = { "SIOCNT", 16, siocnt_fields };
+
+// RCNT
+// Not clear what the order of the serial signals is.
+// When idle, what is labeled as SO (order taken from GBATEK) is low, so that
+// would suggest SD. Should be easy enough to figure out.
+struct reg_field rcnt_fields[] = {
+  { 1, "SC (?)"},
+  { 1, "SD (?)"},
+  { 1, "SI (?)"},
+  { 1, "SO (?)"},
+  { 5, "not used rw"},
+  { 5, "not used ro"},
+  { 1, "not used rw"},
+  { 1, "0 in uart"}
+};
+
+struct reg rcnt = { "RCNT", 16, rcnt_fields };
+
 // uart IRQ routine
 void handle_uart() {
 
@@ -63,7 +102,9 @@ int main() {
   write_line("press:\n\n");
   write_line("- A to write to screen\n");
   write_line("- B to send over uart\n");
-  write_line("- SELECT to toggle fifo\n\n");
+  write_line("- SELECT to toggle fifo\n");
+  write_line("- L to print SIOCNT\n");
+  write_line("- R to print RCNT\n\n");
 
 	irq_init(NULL);
   irq_add(II_SERIAL, handle_uart);
@@ -77,13 +118,17 @@ int main() {
     if(key_hit(KEY_A)) {
       write_line("That tickles!\n");
     }
-
     if(key_hit(KEY_B)) {
       snd_uart((unsigned char*)"some data\n", 10);
     }
-
     if(key_hit(KEY_SELECT)) {
       toggle_fifo();
+    }
+    if(key_hit(KEY_L)) {
+      print_register(&siocnt, REG_SIOCNT);
+    }
+    if(key_hit(KEY_R)) {
+      print_register(&rcnt, REG_SIOCNT);
     }
   }
 }

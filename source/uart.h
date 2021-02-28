@@ -1,3 +1,6 @@
+#ifndef UART_H
+#define UART_H
+
 #include <tonc.h>
 
 void init_uart(unsigned short UART);
@@ -32,3 +35,5 @@ void snd_uart(unsigned char out[], unsigned int size);
 #define SIO_SEND_ENABLE   0x0400
 #define SIO_RECV_ENABLE   0x0800
 #define SIO_REQUEST_IRQ   0x4000
+
+#endif // UART_H
