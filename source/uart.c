@@ -24,7 +24,7 @@ void init_uart(unsigned short uart)
 
 
 // we collect bytes in `in` until we see a `return`
-unsigned int rcv_uart(unsigned char in[])
+unsigned int rcv_uart_ret(unsigned char in[])
 {
   // make sure there's no '\n' in `last`
   unsigned char last = ' ';
@@ -42,6 +42,21 @@ unsigned int rcv_uart(unsigned char in[])
   return i;
 }
 
+// rcv_uart_len expects the first byte to be the size of the transfer
+unsigned int rcv_uart_len(unsigned char in[]) {
+  // wait until we have a full byte (the recv data flag will go to 0 and sd will
+  // go high)
+  while(REG_SIOCNT & 0x0020);
+  int size = (int)REG_SIODATA8;
+
+  for(int i = 0; i < size; i++) {
+    // Wait until we have a full byte (The recv data flag will go to 0)
+    while(REG_SIOCNT & 0x0020);
+    // Return the character in the data register
+    in[i] = (unsigned char)REG_SIODATA8;
+  }
+  return size;
+}
 
 void snd_uart(unsigned char out[], unsigned int size)
 {

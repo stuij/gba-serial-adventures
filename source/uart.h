@@ -4,7 +4,8 @@
 #include <tonc.h>
 
 void init_uart(unsigned short UART);
-unsigned int rcv_uart(unsigned char in[]);
+unsigned int rcv_uart_ret(unsigned char in[]);
+unsigned int rcv_uart_len(unsigned char in[]);
 void snd_uart(unsigned char out[], unsigned int size);
 
 #define dputchar snd_char
