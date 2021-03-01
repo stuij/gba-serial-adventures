@@ -22,11 +22,12 @@ void init_uart(u16 uart) {
   // With any luck, we should now be able to talk to a PC.
 }
 
+/// 'check for return' versions of rcv_uart/snd_uart
 
 // we collect bytes in `in` until we see a `return`
-s32 rcv_uart_ret(u8 in[]) {
+s32 rcv_uart_ret(char in[]) {
   // make sure there's no '\n' in `last`
-  u8 last = ' ';
+  char last = ' ';
   s32 i;
   for(i = 0; i < 4096 && last != '\n'; i++) {
     // sd is assumed to be low
@@ -35,13 +36,28 @@ s32 rcv_uart_ret(u8 in[]) {
     while(REG_SIOCNT & SIO_RECV_DATA);
 
     // save the char from the sio data register
-    last = (u8)REG_SIODATA8;
+    last = (char)REG_SIODATA8;
     in[i] = last;
   }
   return i;
 }
 
-u32 crc32(u32 crc, u8 *buf, size_t len) {
+void snd_uart_ret(char out[], s32 len) {
+  for(s32 i = 0; i < len; i++) {
+    // Wait until the send queue is empty
+    while(REG_SIOCNT & SIO_SEND_DATA);
+
+    // Bung our byte into the data register
+    REG_SIODATA8 = out[i];
+  }
+}
+
+
+/// Gbaser protocol versions of rcv_uart/snd_uart
+// see the readme for the protocol spec
+
+// this is the zlib crc32 variant
+u32 crc32(u32 crc, char *buf, size_t len) {
     crc = ~crc;
     while (len--) {
         crc ^= *buf++;
@@ -51,14 +67,14 @@ u32 crc32(u32 crc, u8 *buf, size_t len) {
     return ~crc;
 }
 
-// rcv_uart_len expects the first byte to be the size of the transfer
-s32 rcv_uart_len(u8 in[]) {
+s32 rcv_uart_gbaser(char in[], char* type, char* status) {
   s32 len = 0;
-  u8 type;
-  u8 data;
+  char data;
   u32 our_crc = 0;
   u32 their_crc = 0;
+  *status = GBASER_ERROR;
 
+  // first 4 bytes are the data length
   for(s32 i = 0; i < 4; i++) {
     // wait until we have a full byte (the recv data flag will go to 0 and sd will
     // go high)
@@ -66,16 +82,19 @@ s32 rcv_uart_len(u8 in[]) {
     len = (len >> 8) | (REG_SIODATA8 << 24);
   }
 
+  // get message type - 1 byte
   while(REG_SIOCNT & 0x0020);
-  type = REG_SIODATA8;
+  *type = REG_SIODATA8;
 
+  // get data - len bytes
   for(s32 i = 0; i < len; i++) {
     while(REG_SIOCNT & 0x0020);
-    data = (u8)REG_SIODATA8;
+    data = (char)REG_SIODATA8;
     // Return the character in the data register
     in[i] = data;
   }
 
+  // get crc - 4 bytes
   for(s32 i = 0; i < 4; i++) {
     while(REG_SIOCNT & 0x0020);
     their_crc = (their_crc >> 8) | (REG_SIODATA8 << 24);
@@ -88,18 +107,38 @@ s32 rcv_uart_len(u8 in[]) {
     printc("message length: 0x%08x\n", len);
     printc("       our CRC: 0x%08x\n", crc32(our_crc, in, len));
     printc("     their CRC: 0x%08x\n", their_crc);
+    *status = GBASER_CRC_ERROR;
     return -1;
+  } else {
+    *status = GBASER_OK;
   }
 
   return len;
 }
 
-void snd_uart(u8 out[], u32 size) {
-  for(s32 i = 0; i < size; i++) {
-    // Wait until the send queue is empty
-    while(REG_SIOCNT & SIO_SEND_DATA);
+void snd_uart_gbaser(char out[], s32 len, char type) {
+  // calculate CRC
+  u32 crc = crc32(0, out, len);
 
-    // Bung our byte into the data register
+  // first send data length - 4 bytes
+  for(s32 i = 0; i < 4; i++) {
+    // wait until the send queue is empty
+    while(REG_SIOCNT & SIO_SEND_DATA);
+    // bung our byte into the data register
+    REG_SIODATA8 = ((char*)len)[i];
+  }
+
+  // send type - 1 byte
+  REG_SIODATA8 = type;
+
+  // send data
+  for(s32 i = 0; i < len; i++) {
+    while(REG_SIOCNT & SIO_SEND_DATA);
     REG_SIODATA8 = out[i];
+  }
+
+  for(s32 i = 0; i < 4; i++) {
+    while(REG_SIOCNT & SIO_SEND_DATA);
+    REG_SIODATA8 = ((char*)crc)[i];
   }
 }

@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-# GBuArt message format (little endian):
+# Gbaser message format (little endian):
 # len:    4 bytes, length of bytes in data field
 # type:    1 byte, type of message
 # data: len bytes, actual data
@@ -37,7 +37,7 @@ def make_msg(kind, data):
     crc = zlib.crc32(data)
     return struct.pack('<IB{0}sI'.format(length), length, kind, data, crc)
 
-def header_loop():
+def gbaser_loop():
     cmd = input("> ")
     ascii = cmd.encode('ascii', 'ignore') + b'\n'
     msg_type = Mtype.string.value # string
@@ -90,15 +90,15 @@ def main():
                         help='the baud-rate of the connection')
     parser.add_argument('--no-rtscts', dest="rtscts", action='store_false',
                         help="don't use RTS/CTS hardware flow control")
-    parser.add_argument('--protocol', dest="header", action='store_true',
-                        help="use header protocol, instead pass-through of data")
+    parser.add_argument('--gbaser', dest="gbaser", action='store_true',
+                        help="use gbaser protocol, instead pass-through of data")
 
     args = parser.parse_args()
 
     init(args.port, args.baudrate, args.rtscts)
 
-    print("starting terminal in {0} mode".format("protocol" if args.header else "passthrough"))
-    read_loop(header_loop if args.header else passthrough_loop)
+    print("starting terminal in {0} mode".format("protocol" if args.gbaser else "passthrough"))
+    read_loop(gbaser_loop if args.gbaser else passthrough_loop)
 
 
 if __name__ == "__main__":

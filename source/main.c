@@ -1,3 +1,4 @@
+#include <string.h>
 #include <tonc.h>
 
 #include "console.h"
@@ -54,15 +55,15 @@ void handle_uart_ret() {
   // cycles on say writing to the console
   if (!(REG_SIOCNT & SIO_RECV_DATA)) {
     // reserve an arbitrary amount of bytes for the rcv buffer
-    u8 in[4096];
+    char in[4096];
     u32 size = rcv_uart_ret(in);
 
     // null-terminating so we can write to the console with write_line
     in[size] = 0;
-    write_line((char*) in);
+    write_line(in);
 
     // send line back over serial line
-    snd_uart(in, size);
+    snd_uart_ret(in, size);
   }
 
   if (!(REG_SIOCNT & SIO_SEND_DATA)) {
@@ -71,9 +72,7 @@ void handle_uart_ret() {
 }
 
 // uart IRQ routine
-void handle_uart_len() {
-  u8 back = GBUART_RET_ERROR;
-
+void handle_uart_gbaser() {
   // the error bit is reset when reading REG_SIOCNT
   if (REG_SIOCNT & SIO_ERROR) {
     write_line("SIO error\n");
@@ -83,22 +82,23 @@ void handle_uart_len() {
   // cycles on say writing to the console
   if (!(REG_SIOCNT & SIO_RECV_DATA)) {
     // reserve an arbitrary amount of bytes for the rcv buffer
-    u8 in[4096];
-    s32 len = rcv_uart_len(in);
+    char in[4096];
+    char gbaser_type = GBASER_ERROR;
+    char gbaser_status = GBASER_ERROR;
+    s32 len = rcv_uart_gbaser(in, &gbaser_type, &gbaser_status);
 
     // error processing received message, CRC mismatch
     if(len == -1) {
-      back = GBUART_RET_CRC_ERROR;
-      snd_uart(&back, 1);
+      snd_uart_gbaser("", 0, GBASER_CRC_ERROR);
     }
 
     // null-terminating so we can write to the console with write_line
     in[len] = 0;
-    write_line((char*) in);
+    write_line(in);
 
-    back = GBUART_RET_OK;
+    char ok[] = "'s all ok, mate";
     // send ack = 0 back over serial line
-    snd_uart(&back, 1);
+    snd_uart_gbaser(ok, strlen(ok), GBASER_OK);
   }
 
   if (!(REG_SIOCNT & SIO_SEND_DATA)) {
@@ -161,7 +161,7 @@ s32 main() {
       write_line("That tickles!\n");
     }
     if(key_hit(KEY_B)) {
-      snd_uart((u8*)"some data\n", 10);
+      snd_uart_ret("some data\n", 10);
     }
     if(key_hit(KEY_LEFT)) {
       write_line("setting ret uart irq handler\n");
@@ -169,7 +169,7 @@ s32 main() {
     }
     if(key_hit(KEY_RIGHT)) {
       write_line("setting len uart irq handler\n");
-      irq_add(II_SERIAL, handle_uart_len);
+      irq_add(II_SERIAL, handle_uart_gbaser);
     }
     if(key_hit(KEY_SELECT)) {
       toggle_fifo();

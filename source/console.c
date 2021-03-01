@@ -64,7 +64,7 @@ void write_line(const char* line) {
 }
 
 // print to console
-void printc (char * format, ...) {
+void printc (char* format, ...) {
   char buffer[256];
   va_list args;
   va_start (args, format);
