@@ -4,8 +4,8 @@
 #include <tonc.h>
 
 void init_uart(unsigned short UART);
-unsigned int rcv_uart_ret(unsigned char in[]);
-unsigned int rcv_uart_len(unsigned char in[]);
+int rcv_uart_ret(unsigned char in[]);
+int rcv_uart_len(unsigned char in[]);
 void snd_uart(unsigned char out[], unsigned int size);
 
 #define dputchar snd_char
@@ -36,5 +36,11 @@ void snd_uart(unsigned char out[], unsigned int size);
 #define SIO_SEND_ENABLE   0x0400
 #define SIO_RECV_ENABLE   0x0800
 #define SIO_REQUEST_IRQ   0x4000
+
+// GBuArt message
+#define GBUART_STRING '\x00'
+#define GBUART_RET_OK '\xFF'
+#define GBUART_RET_ERROR '\xFE'
+#define GBUART_RET_CRC_ERROR '\xFD'
 
 #endif // UART_H

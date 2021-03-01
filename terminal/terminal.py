@@ -1,9 +1,30 @@
 #!/usr/bin/env python
 
+# GBuArt message format (network byte order/big endian):
+# len:    4 bytes, length of bytes in data field
+# type:    1 byte, type of message
+# data: len bytes, actual data
+# crc:    4 bytes, crc check
+#
+# types:
+# - 0x00: string
+# - 0xFF: return OK
+# - 0xFE: general error
+# - 0xFD: CRC error
+
 import argparse
+from enum import Enum
 import os
 import serial
+import struct
 import sys
+import zlib
+
+class Mtype(Enum):
+    string = 0x00
+    ret_ok = 0xff
+    ret_error = 0xfe
+    ret_crc_error = 0xfd
 
 ser = None
 
@@ -11,18 +32,25 @@ def init(port, baudrate, rtscts):
     global ser
     ser = serial.Serial(port, baudrate, timeout=1, rtscts=rtscts)
 
+def make_msg(kind, data):
+    length = len(data)
+    crc = zlib.crc32(data)
+    return struct.pack('!IB{0}sI'.format(length), length, kind, data, crc)
+
 def header_loop():
     cmd = input("> ")
-    to_ser = cmd.encode('ascii', 'ignore') + b'\n'
-    ser.write(bytearray([len(to_ser)]) + to_ser)
+    ascii = cmd.encode('ascii', 'ignore') + b'\n'
+    msg_type = Mtype.string.value # string
+    to_ser = make_msg(msg_type, ascii)
+    ser.write(to_ser)
     while True:
-        read = ser.read(max(1, ser.inWaiting())).decode('ascii')
+        read = ser.read(max(1, ser.inWaiting()))
         if read:
-            if read == 'A':
+            if read == Mtype.ret_ok.value.to_bytes(1, 'big'):
                 print("OK")
                 break
             else:
-                print("didn't get OK signal: {0}".format(read))
+                print("didn't get OK signal: ".join(format(x, '02x') for x in read))
                 break
 
 def passthrough_loop():

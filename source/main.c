@@ -72,6 +72,7 @@ void handle_uart_ret() {
 
 // uart IRQ routine
 void handle_uart_len() {
+  unsigned char back = GBUART_RET_ERROR;
 
   // the error bit is reset when reading REG_SIOCNT
   if (REG_SIOCNT & SIO_ERROR) {
@@ -83,14 +84,20 @@ void handle_uart_len() {
   if (!(REG_SIOCNT & SIO_RECV_DATA)) {
     // reserve an arbitrary amount of bytes for the rcv buffer
     unsigned char in[4096];
-    unsigned int size = rcv_uart_len(in);
+    unsigned int len = rcv_uart_len(in);
+
+    // error processing received message, CRC mismatch
+    if(len == -1) {
+      back = GBUART_RET_CRC_ERROR;
+      snd_uart(&back, 1);
+    }
 
     // null-terminating so we can write to the console with write_line
-    in[size] = 0;
+    in[len] = 0;
     write_line((char*) in);
 
-    unsigned char back = 'A';
-    // send ack = 10 back over serial line
+    back = GBUART_RET_OK;
+    // send ack = 0 back over serial line
     snd_uart(&back, 1);
   }
 

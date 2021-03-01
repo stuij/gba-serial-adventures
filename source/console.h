@@ -16,5 +16,6 @@ struct reg {
 void write_char(int ch);
 void write_line(const char*);
 void print_register(struct reg* reg, int value);
+void printc (char * format, ...);
 
 #endif // CONSOLE_H
