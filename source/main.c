@@ -54,8 +54,8 @@ void handle_uart_ret() {
   // cycles on say writing to the console
   if (!(REG_SIOCNT & SIO_RECV_DATA)) {
     // reserve an arbitrary amount of bytes for the rcv buffer
-    unsigned char in[4096];
-    unsigned int size = rcv_uart_ret(in);
+    u8 in[4096];
+    u32 size = rcv_uart_ret(in);
 
     // null-terminating so we can write to the console with write_line
     in[size] = 0;
@@ -72,7 +72,7 @@ void handle_uart_ret() {
 
 // uart IRQ routine
 void handle_uart_len() {
-  unsigned char back = GBUART_RET_ERROR;
+  u8 back = GBUART_RET_ERROR;
 
   // the error bit is reset when reading REG_SIOCNT
   if (REG_SIOCNT & SIO_ERROR) {
@@ -83,8 +83,8 @@ void handle_uart_len() {
   // cycles on say writing to the console
   if (!(REG_SIOCNT & SIO_RECV_DATA)) {
     // reserve an arbitrary amount of bytes for the rcv buffer
-    unsigned char in[4096];
-    unsigned int len = rcv_uart_len(in);
+    u8 in[4096];
+    s32 len = rcv_uart_len(in);
 
     // error processing received message, CRC mismatch
     if(len == -1) {
@@ -128,7 +128,7 @@ void help() {
   write_line("R to print RCNT\n\n");
 }
 
-int main() {
+s32 main() {
   // Set to UART mode
   init_uart(SIO_BAUD_115200);
 
@@ -161,7 +161,7 @@ int main() {
       write_line("That tickles!\n");
     }
     if(key_hit(KEY_B)) {
-      snd_uart((unsigned char*)"some data\n", 10);
+      snd_uart((u8*)"some data\n", 10);
     }
     if(key_hit(KEY_LEFT)) {
       write_line("setting ret uart irq handler\n");

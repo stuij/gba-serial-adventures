@@ -3,18 +3,12 @@
 
 #include <tonc.h>
 
-void init_uart(unsigned short UART);
-int rcv_uart_ret(unsigned char in[]);
-int rcv_uart_len(unsigned char in[]);
-void snd_uart(unsigned char out[], unsigned int size);
+void init_uart(u16 UART);
+int rcv_uart_ret(u8 in[]);
+int rcv_uart_len(u8 in[]);
+void snd_uart(u8 out[], u32 size);
 
 #define dputchar snd_char
-
-/* These are buggered right now
-#define SIO_SET_SDHI      REG_RCNT &= 0x0020
-#define SIO_SET_SDLO      REG_RCNT &= (0x0020 ^ 0xFFFF)
-#define SIO_GET_SC        REG_RCNT &  0x0010
-*/
 
 // UART settings
 #define SIO_USE_UART      0x3000

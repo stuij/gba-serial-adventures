@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-# GBuArt message format (network byte order/big endian):
+# GBuArt message format (little endian):
 # len:    4 bytes, length of bytes in data field
 # type:    1 byte, type of message
 # data: len bytes, actual data
@@ -35,7 +35,7 @@ def init(port, baudrate, rtscts):
 def make_msg(kind, data):
     length = len(data)
     crc = zlib.crc32(data)
-    return struct.pack('!IB{0}sI'.format(length), length, kind, data, crc)
+    return struct.pack('<IB{0}sI'.format(length), length, kind, data, crc)
 
 def header_loop():
     cmd = input("> ")

@@ -8,12 +8,12 @@
 u16 console[20][30];
 
 // Cursor position
-int row,col;
+s32 row,col;
 
 // fn lifted from pandaforth
-void write_char(int ch) {
-	int lastrow = row;
-	int x,y,i;
+void write_char(u32 ch) {
+	s32 lastrow = row;
+	s32 x,y,i;
 	if (ch >= 32) {
 		console[row][col++] = ch;
 		if (col == 30) {
@@ -60,7 +60,7 @@ void write_char(int ch) {
 }
 
 void write_line(const char* line) {
-  while (*line) write_char((int)(*line++));
+  while (*line) write_char((u32)(*line++));
 }
 
 // print to console
@@ -75,10 +75,10 @@ void printc (char * format, ...) {
 
 
 // print registers
-void print_register(struct reg* reg, int value) {
-  int start_bit = 0;
-  int field_size = 0;
-  int size = reg->size;
+void print_register(struct reg* reg, u32 value) {
+  s32 start_bit = 0;
+  s32 field_size = 0;
+  s32 size = reg->size;
   char bit_string[6];
 
   printc("\nreg %s: 0x%04x\n", reg->name, value);
