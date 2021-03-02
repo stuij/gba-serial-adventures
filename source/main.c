@@ -149,7 +149,7 @@ s32 main() {
   help();
 
 	irq_init(NULL);
-  irq_add(II_SERIAL, handle_uart_ret);
+  irq_add(II_SERIAL, handle_uart_gbaser);
 	irq_add(II_VBLANK, NULL);
 
 	while(1)

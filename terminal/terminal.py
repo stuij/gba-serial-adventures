@@ -43,15 +43,35 @@ def gbaser_loop():
     msg_type = Mtype.string.value # string
     to_ser = make_msg(msg_type, ascii)
     ser.write(to_ser)
+
+    reply = b''
+    data_len = None
+
     while True:
         read = ser.read(max(1, ser.inWaiting()))
-        if read:
-            if read == Mtype.ret_ok.value.to_bytes(1, 'big'):
-                print("OK")
-                break
-            else:
-                print("didn't get OK signal: ".join(format(x, '02x') for x in read))
-                break
+        if len(read) >= 1:
+            reply += read
+
+        if len(reply) >= 4 and data_len == None:
+            data_len = int.from_bytes(reply[:4], 'little', signed=True)
+
+        if data_len != None and len(reply) >= data_len + 9:
+            break
+
+    msg_type = reply[4]
+    data = reply[5:5 + data_len]
+    our_crc = zlib.crc32(data)
+    their_crc = int.from_bytes(reply[-4:], 'little', signed=False)
+
+    if our_crc == their_crc:
+        print("OK")
+    else:
+        print("ERROR: CRCs don't match")
+        print(reply)
+        print("data_len: '{:08x}', type: {:x}".format(data_len, msg_type))
+        print("data: '{0}'".format(data))
+        print("CRCs - ours: '{:08x}', theirs: '{:08x}'".format(our_crc, their_crc))
+
 
 def passthrough_loop():
     cmd = input("> ")

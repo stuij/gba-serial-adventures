@@ -125,10 +125,11 @@ void snd_uart_gbaser(char out[], s32 len, char type) {
     // wait until the send queue is empty
     while(REG_SIOCNT & SIO_SEND_DATA);
     // bung our byte into the data register
-    REG_SIODATA8 = ((char*)len)[i];
+    REG_SIODATA8 = ((char*)&len)[i];
   }
 
   // send type - 1 byte
+  while(REG_SIOCNT & SIO_SEND_DATA);
   REG_SIODATA8 = type;
 
   // send data
@@ -139,6 +140,6 @@ void snd_uart_gbaser(char out[], s32 len, char type) {
 
   for(s32 i = 0; i < 4; i++) {
     while(REG_SIOCNT & SIO_SEND_DATA);
-    REG_SIODATA8 = ((char*)crc)[i];
+    REG_SIODATA8 = ((char*)&crc)[i];
   }
 }
