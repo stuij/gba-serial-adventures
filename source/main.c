@@ -89,12 +89,13 @@ void handle_uart_gbaser() {
 
     // error processing received message, CRC mismatch
     if(len == -1) {
-      snd_uart_gbaser("", 0, GBASER_CRC_ERROR);
+      snd_uart_gbaser("", 0, gbaser_status);
     }
 
     // null-terminating so we can write to the console with write_line
     in[len] = 0;
     write_line(in);
+    printc("Gbaser type: %02x\n", gbaser_type);
 
     char ok[] = "'s all ok, mate";
     // send ack = 0 back over serial line

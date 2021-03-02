@@ -33,7 +33,8 @@ void snd_uart_gbaser(char out[], s32 len, char type);
 #define SIO_REQUEST_IRQ   0x4000
 
 // GBuArt message
-#define GBASER_STRING '\x00'
+#define GBASER_UNDEFINED '\x00'
+#define GBASER_STRING '\x01'
 #define GBASER_OK '\xFF'
 #define GBASER_ERROR '\xFE'
 #define GBASER_CRC_ERROR '\xFD'

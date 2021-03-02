@@ -68,13 +68,17 @@ u32 crc32(u32 crc, char *buf, size_t len) {
 }
 
 s32 rcv_uart_gbaser(char in[], char* type, char* status) {
-  s32 len = 0;
+  u32 len = 0;
   char data;
   u32 our_crc = 0;
   u32 their_crc = 0;
   *status = GBASER_ERROR;
 
-  // first 4 bytes are the data length
+  // first get message type - 1 byte
+  while(REG_SIOCNT & 0x0020);
+  *type = REG_SIODATA8;
+
+  // then get data length - 4 bytes
   for(s32 i = 0; i < 4; i++) {
     // wait until we have a full byte (the recv data flag will go to 0 and sd will
     // go high)
@@ -82,14 +86,10 @@ s32 rcv_uart_gbaser(char in[], char* type, char* status) {
     len = (len >> 8) | (REG_SIODATA8 << 24);
   }
 
-  // get message type - 1 byte
-  while(REG_SIOCNT & 0x0020);
-  *type = REG_SIODATA8;
-
   // get data - len bytes
   for(s32 i = 0; i < len; i++) {
     while(REG_SIOCNT & 0x0020);
-    data = (char)REG_SIODATA8;
+    data = REG_SIODATA8;
     // Return the character in the data register
     in[i] = data;
   }
@@ -103,7 +103,7 @@ s32 rcv_uart_gbaser(char in[], char* type, char* status) {
   // check crc
   our_crc = crc32(0, in, len);
   if(their_crc != our_crc) {
-    printc("ERROR: CRC mismatch!\n");
+
     printc("message length: 0x%08x\n", len);
     printc("       our CRC: 0x%08x\n", crc32(our_crc, in, len));
     printc("     their CRC: 0x%08x\n", their_crc);
@@ -120,17 +120,17 @@ void snd_uart_gbaser(char out[], s32 len, char type) {
   // calculate CRC
   u32 crc = crc32(0, out, len);
 
-  // first send data length - 4 bytes
+  // first send message type - 1 byte
+  // wait until the send queue is empty
+  while(REG_SIOCNT & SIO_SEND_DATA);
+  // bung our byte into the data register
+  REG_SIODATA8 = type;
+
+  // send data length - 4 bytes
   for(s32 i = 0; i < 4; i++) {
-    // wait until the send queue is empty
     while(REG_SIOCNT & SIO_SEND_DATA);
-    // bung our byte into the data register
     REG_SIODATA8 = ((char*)&len)[i];
   }
-
-  // send type - 1 byte
-  while(REG_SIOCNT & SIO_SEND_DATA);
-  REG_SIODATA8 = type;
 
   // send data
   for(s32 i = 0; i < len; i++) {

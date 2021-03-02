@@ -21,7 +21,8 @@ import sys
 import zlib
 
 class Mtype(Enum):
-    string = 0x00
+    undefined = 0x00
+    string = 0x01
     ret_ok = 0xff
     ret_error = 0xfe
     ret_crc_error = 0xfd
@@ -35,13 +36,15 @@ def init(port, baudrate, rtscts):
 def make_msg(kind, data):
     length = len(data)
     crc = zlib.crc32(data)
-    return struct.pack('<IB{0}sI'.format(length), length, kind, data, crc)
+    return struct.pack('<Bi{0}sI'.format(length), kind, length, data, crc)
 
 def gbaser_loop():
     cmd = input("> ")
     ascii = cmd.encode('ascii', 'ignore') + b'\n'
     msg_type = Mtype.string.value # string
+    print("msg length: {0}".format(len(ascii)))
     to_ser = make_msg(msg_type, ascii)
+    print("to ser: {0}".format(to_ser))
     ser.write(to_ser)
 
     reply = b''
@@ -49,16 +52,36 @@ def gbaser_loop():
 
     while True:
         read = ser.read(max(1, ser.inWaiting()))
+
+        # we might have timed out and therefore have read nothing
         if len(read) >= 1:
             reply += read
 
-        if len(reply) >= 4 and data_len == None:
-            data_len = int.from_bytes(reply[:4], 'little', signed=True)
+        # remove gba startup garbage. This can be either b'\x00\xff' or
+        # b'\x00\x00\x00\x00\x00\xff' depending on if fifo is activated.  To be
+        # a bit succinct with the code, we're iterating over the reply if
+        # necessary, counting on the 1 second read timeout. (there's no way
+        # telling how much code might have been received, but removing in pairs
+        # should do what we want concidering the above patterns, even if we get
+        # odd amounts of data in)
+
+        # It's very probable that this gunk was caused by the passthrough_loop
+        # entry previously trying to read gba data when nothing was present:
+        # read = ser.read(ser.inWaiting()).decode('ascii')
+        # print("read garbage: `{0}`".format(read))
+        # best to keep an eye on output messages
+        if len(reply) >= 5 and reply[:2] in [b'\x00\xff', b'\x00\x00']:
+            print("deleting gba startup gunk: '{:04x}'".format(reply[:2]))
+            reply = reply[2:]
+
+        if (len(reply) >= 5 and data_len == None
+            and reply[:2] not in [b'\x00\xff', b'\x00\x00']):
+            data_len = int.from_bytes(reply[1:5], 'little', signed=True)
 
         if data_len != None and len(reply) >= data_len + 9:
             break
 
-    msg_type = reply[4]
+    msg_type = reply[0]
     data = reply[5:5 + data_len]
     our_crc = zlib.crc32(data)
     their_crc = int.from_bytes(reply[-4:], 'little', signed=False)
@@ -89,8 +112,6 @@ def passthrough_loop():
                 break
 
 def read_loop(fn):
-    read = ser.read(ser.inWaiting()).decode('ascii')
-    print("read garbage: `{0}`".format(read))
     while True:
         try:
             fn()
@@ -117,7 +138,7 @@ def main():
 
     init(args.port, args.baudrate, args.rtscts)
 
-    print("starting terminal in {0} mode".format("protocol" if args.gbaser else "passthrough"))
+    print("starting terminal in {0} mode".format("Gbaser" if args.gbaser else "passthrough"))
     read_loop(gbaser_loop if args.gbaser else passthrough_loop)
 
 
