@@ -1,6 +1,8 @@
 #ifndef CONSOLE_H
 #define CONSOLE_H
 
+#include <tonc.h>
+
 // print registers
 struct reg_field {
   int size;
@@ -13,8 +15,9 @@ struct reg {
   struct reg_field* fields;
 };
 
-void write_char(u32 ch);
-void write_line(const char*);
+void write_console_char(u32 ch);
+void write_console_line(const char*);
+void write_console_line_circ(struct circ_buff* buff);
 void print_register(struct reg* reg, u32 value);
 void printc (char* format, ...);
 

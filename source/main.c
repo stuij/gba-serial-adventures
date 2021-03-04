@@ -1,8 +1,13 @@
 #include <string.h>
 #include <tonc.h>
 
+#include "circular_buffer.h"
 #include "console.h"
 #include "uart.h"
+
+#define UART_RCV_BUFFER_SIZE 4096
+char g_rcv_buffer[UART_RCV_BUFFER_SIZE];
+struct circ_buff g_uart_rcv_buffer;
 
 // registers for print
 // SIO_CNT
@@ -48,7 +53,7 @@ void handle_uart_ret() {
 
   // the error bit is reset when reading REG_SIOCNT
   if (REG_SIOCNT & SIO_ERROR) {
-    write_line("SIO error\n");
+    write_console_line("SIO error\n");
   }
 
   // receiving data is time-sensitive so we handle this first without wasting CPU
@@ -58,9 +63,9 @@ void handle_uart_ret() {
     char in[4096];
     u32 size = rcv_uart_ret(in);
 
-    // null-terminating so we can write to the console with write_line
+    // null-terminating so we can write to the console with write_console_line
     in[size] = 0;
-    write_line(in);
+    write_console_line(in);
 
     // send line back over serial line
     snd_uart_ret(in, size);
@@ -75,27 +80,20 @@ void handle_uart_ret() {
 void handle_uart_gbaser() {
   // the error bit is reset when reading REG_SIOCNT
   if (REG_SIOCNT & SIO_ERROR) {
-    write_line("SIO error\n");
+    write_console_line("SIO error\n");
   }
 
   // receiving data is time-sensitive so we handle this first without wasting CPU
   // cycles on say writing to the console
   if (!(REG_SIOCNT & SIO_RECV_DATA)) {
-    // reserve an arbitrary amount of bytes for the rcv buffer
-    char in[4096];
     char gbaser_type = GBASER_ERROR;
     char gbaser_status = GBASER_ERROR;
-    s32 len = rcv_uart_gbaser(in, &gbaser_type, &gbaser_status);
+    s32 len = rcv_uart_gbaser(&g_uart_rcv_buffer, &gbaser_type, &gbaser_status);
 
     // error processing received message, CRC mismatch
     if(len == -1) {
       snd_uart_gbaser("", 0, gbaser_status);
     }
-
-    // null-terminating so we can write to the console with write_line
-    in[len] = 0;
-    write_line(in);
-    printc("Gbaser type: %02x\n", gbaser_type);
 
     char ok[] = "'s all ok, mate";
     // send ack = 0 back over serial line
@@ -111,65 +109,39 @@ void handle_uart_gbaser() {
 // FIFO. It basically buys you 3 extra sent chars worth of cycles.
 void toggle_fifo() {
   REG_SIOCNT & SIO_USE_FIFO ?
-      write_line("disabling fifo\n") :
-      write_line("enabling fifo\n");
+      write_console_line("disabling fifo\n") :
+      write_console_line("enabling fifo\n");
 
   // disabling the fifo will reset it
   REG_SIOCNT ^= SIO_USE_FIFO;
 }
 
 void help() {
-  write_line("\nSTART: display help text\n");
-  write_line("SELECT: toggle fifo\n");
-  write_line("LEFT: set ret IRQ handler\n");
-  write_line("RIGHT: set len IRQ handler\n");
-  write_line("A to write to screen\n");
-  write_line("B to send over uart\n");
-  write_line("L to print SIOCNT\n");
-  write_line("R to print RCNT\n\n");
+  write_console_line("\nSTART: display help text\n");
+  write_console_line("SELECT: toggle fifo\n");
+  write_console_line("LEFT: set ret IRQ handler\n");
+  write_console_line("RIGHT: set len IRQ handler\n");
+  write_console_line("A to write to screen\n");
+  write_console_line("B to send over uart\n");
+  write_console_line("L to print SIOCNT\n");
+  write_console_line("R to print RCNT\n\n");
 }
 
-s32 main() {
-  // Set to UART mode
-  init_uart(SIO_BAUD_115200);
-
-	REG_DISPCNT= DCNT_MODE0 | DCNT_BG0;
-  
-	// Base TTE init for tilemaps
-	tte_init_se(
-		0,						        // Background number (0-3)
-		BG_CBB(0)|BG_SBB(31),	// BG control
-		0,					        	// Tile offset (special cattr)
-		CLR_WHITE,		        // Ink color
-		14,						        // BitUnpack offset (on-pixel = 15)
-		NULL,			        		// Default font (sys8) 
-		NULL);					      // Default renderer (se_drawg_s)
-
-  write_line(".. and now we wait ..\n\n\n\n");
-  write_line("ready to receive from uart\n\n");
-  help();
-
-	irq_init(NULL);
-  irq_add(II_SERIAL, handle_uart_gbaser);
-	irq_add(II_VBLANK, NULL);
-
-	while(1)
-	{
-		VBlankIntrWait();
-		key_poll();
+void do_keys() {
+  key_poll();
 
     if(key_hit(KEY_A)) {
-      write_line("That tickles!\n");
+      write_console_line("That tickles!\n");
     }
     if(key_hit(KEY_B)) {
       snd_uart_ret("some data\n", 10);
     }
     if(key_hit(KEY_LEFT)) {
-      write_line("setting ret uart irq handler\n");
+      write_console_line("setting ret uart irq handler\n");
       irq_add(II_SERIAL, handle_uart_ret);
     }
     if(key_hit(KEY_RIGHT)) {
-      write_line("setting len uart irq handler\n");
+      write_console_line("setting len uart irq handler\n");
       irq_add(II_SERIAL, handle_uart_gbaser);
     }
     if(key_hit(KEY_SELECT)) {
@@ -183,6 +155,45 @@ s32 main() {
     }
     if(key_hit(KEY_R)) {
       print_register(&rcnt, REG_RCNT);
+    }
+}
+
+s32 main() {
+  // set up display
+	REG_DISPCNT= DCNT_MODE0 | DCNT_BG0;
+  
+	// Base TTE init for tilemaps
+	tte_init_se(
+		0,						        // Background number (0-3)
+		BG_CBB(0)|BG_SBB(31),	// BG control
+		0,					        	// Tile offset (special cattr)
+		CLR_WHITE,		        // Ink color
+		14,						        // BitUnpack offset (on-pixel = 15)
+		NULL,			        		// Default font (sys8) 
+		NULL);					      // Default renderer (se_drawg_s)
+
+  // Set to UART mode
+  init_circ_buff(&g_uart_rcv_buffer, g_rcv_buffer, UART_RCV_BUFFER_SIZE);
+  init_uart(SIO_BAUD_115200);
+
+  // set irqs
+	irq_init(NULL);
+  irq_add(II_SERIAL, handle_uart_gbaser);
+	irq_add(II_VBLANK, NULL);
+
+  // welcome text
+  write_console_line(".. and now we wait ..\n\n\n\n");
+  write_console_line("ready to receive from uart\n\n");
+  help();
+
+  // main loop
+	while(1)
+	{
+		VBlankIntrWait();
+    do_keys();
+
+    if(circ_bytes_available(&g_uart_rcv_buffer)) {
+      write_console_line_circ(&g_uart_rcv_buffer);
     }
   }
 }

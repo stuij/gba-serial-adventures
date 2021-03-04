@@ -4,9 +4,9 @@
 #include <tonc.h>
 
 void init_uart(u16 UART);
-int rcv_uart_ret(char in[]);
+s32 rcv_uart_ret(char in[]);
 void snd_uart_ret(char out[], s32 len);
-s32 rcv_uart_gbaser(char in[], char* type, char* status);
+s32 rcv_uart_gbaser(struct circ_buff* circ, char* type, char* status);
 void snd_uart_gbaser(char out[], s32 len, char type);
 
 #define dputchar snd_char

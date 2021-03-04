@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <tonc.h>
 
+#include "circular_buffer.h"
 #include "console.h"
 
 // Console Data
@@ -59,8 +60,15 @@ void write_char(u32 ch) {
 	}
 }
 
-void write_line(const char* line) {
-  while (*line) write_char((u32)(*line++));
+void write_console_line(const char* line) {
+  while (*line)
+    write_char((u32)(*line++));
+}
+
+void write_console_line_circ(struct circ_buff* buff) {
+  char out;
+  while (read_circ_char(buff, &out))
+    write_char((u32)out);
 }
 
 // print to console
@@ -69,8 +77,8 @@ void printc (char* format, ...) {
   va_list args;
   va_start (args, format);
   vsnprintf (buffer, sizeof(buffer), format, args);
-  write_line(buffer);
   va_end (args);
+  write_console_line(buffer);
 }
 
 

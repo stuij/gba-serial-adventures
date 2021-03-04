@@ -1,5 +1,7 @@
-#include "uart.h"
+#include "circular_buffer.h"
 #include "console.h"
+#include "stdio.h"
+#include "uart.h"
 
 void init_uart(u16 uart) {
   // clear out SIO control registers
@@ -67,7 +69,7 @@ u32 crc32(u32 crc, char *buf, size_t len) {
     return ~crc;
 }
 
-s32 rcv_uart_gbaser(char in[], char* type, char* status) {
+s32 rcv_uart_gbaser(struct circ_buff* circ, char* type, char* status) {
   u32 len = 0;
   char data;
   u32 our_crc = 0;
@@ -90,8 +92,10 @@ s32 rcv_uart_gbaser(char in[], char* type, char* status) {
   for(s32 i = 0; i < len; i++) {
     while(REG_SIOCNT & 0x0020);
     data = REG_SIODATA8;
+    // calculate the crc inline
+    our_crc = crc32(our_crc, &data, 1);
     // Return the character in the data register
-    in[i] = data;
+    write_circ_char(circ, data);
   }
 
   // get crc - 4 bytes
@@ -101,11 +105,9 @@ s32 rcv_uart_gbaser(char in[], char* type, char* status) {
   }
 
   // check crc
-  our_crc = crc32(0, in, len);
   if(their_crc != our_crc) {
-
     printc("message length: 0x%08x\n", len);
-    printc("       our CRC: 0x%08x\n", crc32(our_crc, in, len));
+    printc("       our CRC: 0x%08x\n", our_crc);
     printc("     their CRC: 0x%08x\n", their_crc);
     *status = GBASER_CRC_ERROR;
     return -1;

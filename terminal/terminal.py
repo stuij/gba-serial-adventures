@@ -64,14 +64,8 @@ def gbaser_loop():
         # telling how much code might have been received, but removing in pairs
         # should do what we want concidering the above patterns, even if we get
         # odd amounts of data in)
-
-        # It's very probable that this gunk was caused by the passthrough_loop
-        # entry previously trying to read gba data when nothing was present:
-        # read = ser.read(ser.inWaiting()).decode('ascii')
-        # print("read garbage: `{0}`".format(read))
-        # best to keep an eye on output messages
         if len(reply) >= 5 and reply[:2] in [b'\x00\xff', b'\x00\x00']:
-            print("deleting gba startup gunk: '{:04x}'".format(reply[:2]))
+            print("deleting gba startup gunk: {0}".format(reply[:2]))
             reply = reply[2:]
 
         if (len(reply) >= 5 and data_len == None
