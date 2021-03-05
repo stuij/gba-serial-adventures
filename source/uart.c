@@ -3,6 +3,9 @@
 #include "stdio.h"
 #include "uart.h"
 
+char g_rcv_buffer[UART_RCV_BUFFER_SIZE];
+struct circ_buff g_uart_rcv_buffer;
+
 void init_uart(u16 uart) {
   // clear out SIO control registers
   REG_RCNT = 0;
@@ -143,5 +146,63 @@ void snd_uart_gbaser(char out[], s32 len, char type) {
   for(s32 i = 0; i < 4; i++) {
     while(REG_SIOCNT & SIO_SEND_DATA);
     REG_SIODATA8 = ((char*)&crc)[i];
+  }
+}
+
+
+// uart IRQ routine
+void handle_uart_ret() {
+
+  // the error bit is reset when reading REG_SIOCNT
+  if (REG_SIOCNT & SIO_ERROR) {
+    write_console_line("SIO error\n");
+  }
+
+  // receiving data is time-sensitive so we handle this first without wasting CPU
+  // cycles on say writing to the console
+  if (!(REG_SIOCNT & SIO_RECV_DATA)) {
+    // reserve an arbitrary amount of bytes for the rcv buffer
+    char in[4096];
+    u32 size = rcv_uart_ret(in);
+
+    // null-terminating so we can write to the console with write_console_line
+    in[size] = 0;
+    write_console_line(in);
+
+    // send line back over serial line
+    snd_uart_ret(in, size);
+  }
+
+  if (!(REG_SIOCNT & SIO_SEND_DATA)) {
+    // do something
+  }
+}
+
+// uart IRQ routine
+void handle_uart_gbaser() {
+  // the error bit is reset when reading REG_SIOCNT
+  if (REG_SIOCNT & SIO_ERROR) {
+    write_console_line("SIO error\n");
+  }
+
+  // receiving data is time-sensitive so we handle this first without wasting CPU
+  // cycles on say writing to the console
+  if (!(REG_SIOCNT & SIO_RECV_DATA)) {
+    char gbaser_type = GBASER_ERROR;
+    char gbaser_status = GBASER_ERROR;
+    s32 len = rcv_uart_gbaser(&g_uart_rcv_buffer, &gbaser_type, &gbaser_status);
+
+    // error processing received message, CRC mismatch
+    if(len == -1) {
+      snd_uart_gbaser("", 0, gbaser_status);
+    }
+
+    char ok[] = "'s all ok, mate";
+    // send ack = 0 back over serial line
+    snd_uart_gbaser(ok, strlen(ok), GBASER_OK);
+  }
+
+  if (!(REG_SIOCNT & SIO_SEND_DATA)) {
+    // do something
   }
 }

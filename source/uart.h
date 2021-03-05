@@ -9,6 +9,15 @@ void snd_uart_ret(char out[], s32 len);
 s32 rcv_uart_gbaser(struct circ_buff* circ, char* type, char* status);
 void snd_uart_gbaser(char out[], s32 len, char type);
 
+// rcv buffer things
+#define UART_RCV_BUFFER_SIZE 4096
+extern char g_rcv_buffer[UART_RCV_BUFFER_SIZE];
+extern struct circ_buff g_uart_rcv_buffer;
+
+// irq handlers
+void handle_uart_ret();
+void handle_uart_gbaser();
+
 #define dputchar snd_char
 
 // UART settings

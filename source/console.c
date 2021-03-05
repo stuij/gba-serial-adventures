@@ -108,3 +108,42 @@ void print_register(struct reg* reg, u32 value) {
   }
   printc("\n");
 };
+
+// registers for print
+// SIO_CNT
+struct reg_field siocnt_fields[] = {
+  { 2, "baud rate" },
+  { 1, "cts" },
+  { 1, "parity"},
+  { 1, "snd flag"},
+  { 1, "rcv flag"},
+  { 1, "error flag"},
+  { 1, "data length"},
+  { 1, "fifo enable"},
+  { 1, "par enable"},
+  { 1, "snd enable"},
+  { 1, "rcv enable"},
+  { 1, "must be 1"},
+  { 1, "must be 1"},
+  { 1, "irq enable"},
+  { 1, "not used, 0"},
+};
+
+struct reg siocnt = { "SIOCNT", 16, siocnt_fields };
+
+// RCNT
+// Not clear what the order of the serial signals is.
+// When idle, what is labeled as SI,SO (order taken from GBATEK) is low, so that
+// would suggest one of them is SD. Should be easy enough to figure out.
+struct reg_field rcnt_fields[] = {
+  { 1, "SC (?)"},
+  { 1, "SD (?)"},
+  { 1, "SI (?)"},
+  { 1, "SO (?)"},
+  { 5, "not used rw"},
+  { 5, "not used ro"},
+  { 1, "not used rw"},
+  { 1, "0 in uart"}
+};
+
+struct reg rcnt = { "RCNT", 16, rcnt_fields };

@@ -21,4 +21,8 @@ void write_console_line_circ(struct circ_buff* buff);
 void print_register(struct reg* reg, u32 value);
 void printc (char* format, ...);
 
+// registers to print
+extern struct reg siocnt;
+extern struct reg rcnt;
+
 #endif // CONSOLE_H
