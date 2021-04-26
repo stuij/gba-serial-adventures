@@ -23,6 +23,7 @@ import zlib
 class Mtype(Enum):
     undefined = 0x00
     string = 0x01
+    multiboot = 0x02
     ret_ok = 0xff
     ret_error = 0xfe
     ret_crc_error = 0xfd
@@ -38,8 +39,7 @@ def make_msg(kind, data):
     crc = zlib.crc32(data)
     return struct.pack('<Bi{0}sI'.format(length), kind, length, data, crc)
 
-def gbaser_loop():
-    cmd = input("> ")
+def send_gbaser_string(cmd):
     ascii = cmd.encode('ascii', 'ignore') + b'\n'
     msg_type = Mtype.string.value # string
     print("msg length: {0}".format(len(ascii)))
@@ -47,6 +47,17 @@ def gbaser_loop():
     print("to ser: {0}".format(to_ser))
     ser.write(to_ser)
 
+def send_multiboot(file):
+    with open(file, 'rb') as fp:
+        bytes = bytearray(fp.read())
+        msg_type = Mtype.multiboot.value # string
+        print("sending multiboot rom, please wait..")
+        print("file length: {0}".format(len(bytes)))
+        to_ser = make_msg(msg_type, bytes)
+        # print("to ser: {0}".format(to_ser))
+        ser.write(to_ser)
+
+def get_gbaser_reply():
     reply = b''
     data_len = None
 
@@ -76,12 +87,13 @@ def gbaser_loop():
             break
 
     msg_type = reply[0]
-    data = reply[5:5 + data_len]
+    crc_begin = 5 + data_len
+    data = reply[5:crc_begin]
     our_crc = zlib.crc32(data)
-    their_crc = int.from_bytes(reply[-4:], 'little', signed=False)
+    their_crc = int.from_bytes(reply[crc_begin:crc_begin + 4], 'little', signed=False)
 
     if our_crc == their_crc:
-        print("OK")
+        print("got reply")
     else:
         print("ERROR: CRCs don't match")
         print(reply)
@@ -89,6 +101,14 @@ def gbaser_loop():
         print("data: '{0}'".format(data))
         print("CRCs - ours: '{:08x}', theirs: '{:08x}'".format(our_crc, their_crc))
 
+def gbaser_loop():
+    cmd = input("> ")
+    if (cmd.startswith("multiboot")):
+        send_multiboot(cmd.split(" ")[1].strip())
+    else:
+        send_gbaser_string(cmd)
+
+    get_gbaser_reply()
 
 def passthrough_loop():
     cmd = input("> ")
@@ -125,15 +145,20 @@ def main():
                         help='the baud-rate of the connection')
     parser.add_argument('--no-rtscts', dest="rtscts", action='store_false',
                         help="don't use RTS/CTS hardware flow control")
-    parser.add_argument('--gbaser', dest="gbaser", action='store_true',
-                        help="use gbaser protocol, instead pass-through of data")
+    parser.add_argument('--passthrough', dest="passthrough", action='store_true',
+                        help="use pass-through mode of sending data, instead of Gbaser")
+    parser.add_argument('-m', '--multiboot', default='', help="load this multiboot file")
 
     args = parser.parse_args()
 
     init(args.port, args.baudrate, args.rtscts)
 
-    print("starting terminal in {0} mode".format("Gbaser" if args.gbaser else "passthrough"))
-    read_loop(gbaser_loop if args.gbaser else passthrough_loop)
+    if(args.multiboot):
+        send_multiboot(args.multiboot)
+    else:
+        print("starting terminal in {0} mode".format(
+            "pass-through" if args.passthrough else "Gbaser"))
+        read_loop(gbaser_loop if args.gbaser else passthrough_loop)
 
 
 if __name__ == "__main__":

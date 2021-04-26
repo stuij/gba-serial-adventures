@@ -19,8 +19,8 @@ void toggle_fifo() {
 void help() {
   write_console_line("\nSTART: display help text\n");
   write_console_line("SELECT: toggle fifo\n");
-  write_console_line("LEFT: set ret IRQ handler\n");
-  write_console_line("RIGHT: set len IRQ handler\n");
+  write_console_line("LEFT: set passthrough IRQ mode\n");
+  write_console_line("RIGHT: set Gbaser IRQ mode\n");
   write_console_line("A to write to screen\n");
   write_console_line("B to send over uart\n");
   write_console_line("L to print SIOCNT\n");
@@ -37,11 +37,11 @@ void do_keys() {
       snd_uart_ret("some data\n", 10);
     }
     if(key_hit(KEY_LEFT)) {
-      write_console_line("setting ret uart irq handler\n");
+      write_console_line("passthrough uart irq mode set\n");
       irq_add(II_SERIAL, handle_uart_ret);
     }
     if(key_hit(KEY_RIGHT)) {
-      write_console_line("setting len uart irq handler\n");
+      write_console_line("Gbaser uart irq mode set\n");
       irq_add(II_SERIAL, handle_uart_gbaser);
     }
     if(key_hit(KEY_SELECT)) {
@@ -82,8 +82,9 @@ s32 main() {
 	irq_add(II_VBLANK, NULL);
 
   // welcome text
-  write_console_line(".. and now we wait ..\n\n\n\n");
-  write_console_line("ready to receive from uart\n\n");
+  write_console_line(".. and now we wait ..\n\n\n");
+  write_console_line("ready to receive from uart\n");
+  write_console_line("uart mode: Gbaser\n");
   help();
 
   // main loop

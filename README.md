@@ -7,7 +7,10 @@ communicate with a Gameboy Advance over the link port. A run-of-the-mill USB-to-
 will do fine. And as an interface program any old UART app will probably do as
 well.
 
-This is a tutorial and simple code example to test UART transfers with this setup.
+This setup can also be used to load multiboot programs.
+
+This is a tutorial and simple code example to test UART transfers with this setup. An option to load multiboot programs is included.
+
 
 ![GBA UART demo](uart.jpeg?raw=true "See, it works.")
 
@@ -73,16 +76,15 @@ outputs. It's usually hard to see on the pictures.
 
 ### terminal program
 
-Choose your favorite terminal program. GNU screen should work on Linux. Make sure you enable serial flow control if your cable (and the GBA program) supports it.
-
 I've wrote a simple Python terminal that is hopefully cross-platform:
 
     <root>/terminal/terminal.py -h
 
 Whatever you type is sent over the specified serial port after you hit
 return. The program asynchronously prints whatever the GBA sends back on the
-screen. When using the GBA example code in this repo, whatever you typed is
-simply sent back again.
+screen. Read below for more info on its features and operation.
+
+You can also choose your favorite terminal program. GNU screen should work on Linux. Make sure you enable serial flow control if your cable (and the GBA program) supports it. If you use it with the demo program in this repo. Press left on the dpad to set the GBA into pass-through mode, which is compatible with dumb terminals.
 
 ### compiler toolchain
 
@@ -166,11 +168,35 @@ steps (in any order):
   should be `COMx`, where `x` is a number.
 - start your favorite serial communication program or use the simplistic
   terminal program in this repo: `<root>/terminal/terminal.py /dev/ttyUSB1`
-- type away
+- When using a dumb terminal, press left on the GBA dpad to enter dumb
+  pass-through mode.
 - (the terminal.py program will only send data to the GBA after a `return`. The
   GBA program will only exit the read loop after detecting a `return`. The GBA
   will send back the bytes you've sent it)
 - (the read-buffer of the GBA program is 4096 bytes)
+
+## protocols and terminal program
+
+The GBA test program and the included terminal.py program supports two protocols:
+
+- pass-through: this will just read incoming bytes into an array, scan for a ret
+  character and then print those bytes to screen.
+
+- Gbaser (the default): This is a very simple communication protocol. The first
+  byte designates the type, then follows a word containing the size of the
+  transfer, then the data itself, and following it another word with the CRC of
+  the data. The terminal program by default will listen to strings of data, and
+  will send whatever you typed in the Gbaser format, with as type `string'. On
+  the GBA, the result will be saved in a ring-buffer, which will be drained when
+  printing the characters on screen.
+
+## sending multiboot programs
+
+This setup supports loading multiboot programs. So GBA roms with the `.mb` suffix.
+
+Just use the `terminal.py` program with as the argument of the `--multiboot` parameter your multiboot file:
+
+    ./terminal/terminal.py --multiboot /home/zeno/tmp/iso-snake.mb /dev/ttyUSB0
 
 ## gotchas
 
@@ -192,13 +218,9 @@ cycles, so a byte read is about 0.005 of that, or 1/192.84. So 0.84 scanlines
 
 ## todo
 
-- see how this setup holds under max load
 - add oscilloscope pics
 - investigate why the computer-side doesn't respect SD being high
-- a receive ring buffer
 - set a read timeout
-- an alternate transfer mode with header info containing error checking and nr
-  of bytes to read/send instead of searching for a newline
 
 ## acknowledgement
 

@@ -74,12 +74,16 @@ u32 crc32(u32 crc, char *buf, size_t len) {
     return ~crc;
 }
 
+void write_multiboot(s32 offset, char data) {
+  *(char*)(MEM_EWRAM + offset) = data;
+}
+
 s32 rcv_uart_gbaser(struct circ_buff* circ, char* type, char* status) {
   u32 len = 0;
   char data;
   u32 our_crc = 0;
   u32 their_crc = 0;
-  *status = GBASER_ERROR;
+  *type = GBASER_ERROR;
 
   // first get message type - 1 byte
   while(REG_SIOCNT & 0x0020);
@@ -99,8 +103,11 @@ s32 rcv_uart_gbaser(struct circ_buff* circ, char* type, char* status) {
     data = REG_SIODATA8;
     // calculate the crc inline
     our_crc = crc32(our_crc, &data, 1);
-    // Return the character in the data register
-    write_circ_char(circ, data);
+    // write data to the appropriate place
+    if (*type == 1)
+      write_circ_char(circ, data);
+    else if (*type == 2)
+      write_multiboot(i, data);
   }
 
   // get crc - 4 bytes
@@ -120,6 +127,10 @@ s32 rcv_uart_gbaser(struct circ_buff* circ, char* type, char* status) {
     *status = GBASER_OK;
   }
 
+  // let's go crazy, we jump to the multiboot start!
+  if (*type == 2)
+    asm("mov pc, #0x02000000");
+  
   return len;
 }
 
