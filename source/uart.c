@@ -1,3 +1,5 @@
+#include <string.h>
+
 #include "circular_buffer.h"
 #include "console.h"
 #include "stdio.h"
