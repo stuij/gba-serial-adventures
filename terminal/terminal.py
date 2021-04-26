@@ -158,7 +158,7 @@ def main():
     else:
         print("starting terminal in {0} mode".format(
             "pass-through" if args.passthrough else "Gbaser"))
-        read_loop(gbaser_loop if args.gbaser else passthrough_loop)
+        read_loop(passthrough_loop if args.passthrough else gbaser_loop)
 
 
 if __name__ == "__main__":
