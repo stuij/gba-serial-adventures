@@ -23,16 +23,18 @@ import zlib
 class Mtype(Enum):
     undefined = 0x00
     string = 0x01
-    multiboot = 0x02
+    binary = 0x02
+    multiboot = 0x03
     ret_ok = 0xff
     ret_error = 0xfe
     ret_crc_error = 0xfd
 
-ser = None
+SER = None
+RATH = False
 
 def init(port, baudrate, rtscts):
-    global ser
-    ser = serial.Serial(port, baudrate, timeout=1, rtscts=rtscts)
+    global SER
+    SER = serial.Serial(port, baudrate, timeout=1, rtscts=rtscts)
 
 def make_msg(kind, data):
     length = len(data)
@@ -40,29 +42,20 @@ def make_msg(kind, data):
     return struct.pack('<Bi{0}sI'.format(length), kind, length, data, crc)
 
 def send_gbaser_string(cmd):
-    ascii = cmd.encode('ascii', 'ignore') + b'\n'
+    ascii = cmd.encode('ascii', 'ignore') + b'\r\n'
     msg_type = Mtype.string.value # string
-    print("msg length: {0}".format(len(ascii)))
+    # print("msg length: {0}".format(len(ascii)))
     to_ser = make_msg(msg_type, ascii)
-    print("to ser: {0}".format(to_ser))
-    ser.write(to_ser)
+    # print("to ser: {0}".format(len(to_ser))
+    SER.write(to_ser)
 
-def send_multiboot(file):
-    with open(file, 'rb') as fp:
-        bytes = bytearray(fp.read())
-        msg_type = Mtype.multiboot.value # string
-        print("sending multiboot rom, please wait..")
-        print("file length: {0}".format(len(bytes)))
-        to_ser = make_msg(msg_type, bytes)
-        # print("to ser: {0}".format(to_ser))
-        ser.write(to_ser)
 
 def get_gbaser_reply():
     reply = b''
     data_len = None
 
     while True:
-        read = ser.read(max(1, ser.inWaiting()))
+        read = SER.read(max(1, SER.inWaiting()))
 
         # we might have timed out and therefore have read nothing
         if len(read) >= 1:
@@ -93,7 +86,7 @@ def get_gbaser_reply():
     their_crc = int.from_bytes(reply[crc_begin:crc_begin + 4], 'little', signed=False)
 
     if our_crc == their_crc:
-        print("got reply")
+        pass # print("got reply: {0}".format(reply))
     else:
         print("ERROR: CRCs don't match")
         print(reply)
@@ -101,31 +94,103 @@ def get_gbaser_reply():
         print("data: '{0}'".format(data))
         print("CRCs - ours: '{:08x}', theirs: '{:08x}'".format(our_crc, their_crc))
 
+    rest = reply[crc_begin + 4:] # rest
+    return rest
+
+
+def print_remote_output(residue):
+    reply = b''
+    clean = ''
+    exit = False
+
+    def process_remote(remote):
+        nonlocal reply, clean, exit
+        clean = remote.replace(b'\x1e', b'')
+        reply += clean
+
+        # print(remote, clean, reply)
+        sys.stdout.write(clean.decode('ascii', 'ignore'))
+        sys.stdout.flush()
+        if b'\x1e' in remote:
+            exit = True
+
+    process_remote(residue)
+
+    while exit == False:
+        read = SER.read(max(1, SER.inWaiting()))
+        # we might have timed out and therefore have read nothing
+        if len(read) >= 1:
+            process_remote(read)
+
+
+def send_binary(file, offset, msg_type):
+    with open(file, 'rb') as fp:
+        print(msg_type)
+        bytes = bytearray(fp.read())
+        offset_bytes = offset.to_bytes(4, 'little', signed=False)
+        print("binary length: {0}".format(hex(len(bytes))))
+        payload = offset_bytes + bytes
+        print("total bytes: {0}".format(hex(len(payload))))
+        to_ser = make_msg(msg_type, payload)
+        print("to ser: {0}".format(hex(len(to_ser))))
+        SER.write(to_ser)
+
+
+def send_line(line):
+    send_gbaser_string(line)
+    if RATH:
+        rest = get_gbaser_reply()
+        print_remote_output(rest)
+
+
+def send_file(file):
+    with open(file) as fp:
+        for line in fp:
+            send_line(line)
+
+def send_multiboot(file):
+    print("sending multiboot rom, please wait..")
+    send_binary(file, 0x02000000, Mtype.multiboot.value)
+
 def gbaser_loop():
-    cmd = input("> ")
+    if RATH:
+        cmd = input("")
+    else:
+        cmd = input("> ")
+
     if (cmd.startswith("multiboot")):
         send_multiboot(cmd.split(" ")[1].strip())
+    if (cmd.startswith("binary")):
+        arguments = cmd.split(" ")
+        send_binary(arguments[1].strip(), int(arguments[2].strip()), Mtype.binary.value)
+    elif (cmd.startswith("include")):
+        send_file(cmd.split(" ")[1].strip())
     else:
-        send_gbaser_string(cmd)
+        send_line(cmd)
 
-    get_gbaser_reply()
 
 def passthrough_loop():
     cmd = input("> ")
     to_ser = cmd.encode('ascii', 'ignore') + b'\n'
-    ser.write(to_ser)
+    SER.write(to_ser)
     cmd_len = len(cmd)
 
     reply = ''
     while True:
-        read = ser.read(max(1, ser.inWaiting())).decode('ascii')
+        read = SER.read(max(1, SER.inWaiting())).decode('ascii')
         if len(read) >= 1:
             reply += read
             if len(reply) >= cmd_len:
                 print(reply, end='')
                 break
 
+
 def read_loop(fn):
+    read = SER.read(max(0, SER.inWaiting()))
+    if len(read) > 0:
+        sys.stdout.write(read.decode('ascii', 'ignore') + "\n")
+        sys.stdout.flush()
+
     while True:
         try:
             fn()
@@ -136,7 +201,9 @@ def read_loop(fn):
                 print("\nexiting..")
                 os._exit(0)
 
+
 def main():
+    global RATH
     parser = argparse.ArgumentParser(description='serial repl')
     parser.add_argument('port',
                         help='The name of the serial port. examples: `/dev/ttyUSB1`,  `COM3`')
@@ -147,17 +214,29 @@ def main():
                         help="don't use RTS/CTS hardware flow control")
     parser.add_argument('--passthrough', dest="passthrough", action='store_true',
                         help="use pass-through mode of sending data, instead of Gbaser")
+    parser.add_argument('--rath', dest="rath", action='store_true',
+                        help="Communicate with Rath Forth process. Implies Gbaser. Changes cmdline to be more Forth-like, and processes Forth output next to ack return for sending data.")
     parser.add_argument('-m', '--multiboot', default='', help="load this multiboot file")
+    parser.add_argument('--binary-blob', dest="bin_blob",
+                        help="binary blob to send to GBA")
+    parser.add_argument('--binary-loc', dest="bin_loc",
+                        help="location to send the binary blob to")
+
 
     args = parser.parse_args()
-
+    RATH = args.rath
     init(args.port, args.baudrate, args.rtscts)
 
     if(args.multiboot):
         send_multiboot(args.multiboot)
+    elif(args.bin_blob):
+        if not args.bin_loc:
+            print("when sending a binary blob, you need to specify the memory location with `--binary-loc`")
+        else:
+            print(hex(int(args.bin_loc, 0)))
+            send_binary(args.bin_blob, int(args.bin_loc, 0), Mtype.binary.value)
     else:
-        print("starting terminal in {0} mode".format(
-            "pass-through" if args.passthrough else "Gbaser"))
+        print("starting terminal in {0} mode".format("passthrough" if args.passthrough else "Gbaser"))
         read_loop(passthrough_loop if args.passthrough else gbaser_loop)
 
 

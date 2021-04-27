@@ -9,8 +9,11 @@ void snd_uart_ret(char out[], s32 len);
 s32 rcv_uart_gbaser(struct circ_buff* circ, char* type, char* status);
 void snd_uart_gbaser(char out[], s32 len, char type);
 
+void snd_char(s32 character);
+s32 rcv_char(void);
+
 // rcv buffer things
-#define UART_RCV_BUFFER_SIZE 4096
+#define UART_RCV_BUFFER_SIZE 256
 extern char g_rcv_buffer[UART_RCV_BUFFER_SIZE];
 extern struct circ_buff g_uart_rcv_buffer;
 
@@ -44,6 +47,8 @@ void handle_uart_gbaser();
 // GBuArt message
 #define GBASER_UNDEFINED '\x00'
 #define GBASER_STRING '\x01'
+#define GBASER_BINARY '\x02'
+#define GBASER_MULTIBOOT '\x03'
 #define GBASER_OK '\xFF'
 #define GBASER_ERROR '\xFE'
 #define GBASER_CRC_ERROR '\xFD'

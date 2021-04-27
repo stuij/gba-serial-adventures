@@ -78,7 +78,7 @@ outputs. It's usually hard to see on the pictures.
 
 I've wrote a simple Python terminal that is hopefully cross-platform:
 
-    <root>/terminal/terminal.py -h
+    <root>/shell/shell.py -h
 
 Whatever you type is sent over the specified serial port after you hit
 return. The program asynchronously prints whatever the GBA sends back on the
@@ -167,19 +167,19 @@ steps (in any order):
   often on /dev/ttyUSB0. Not sure how to find out on Windows, but I believe it
   should be `COMx`, where `x` is a number.
 - start your favorite serial communication program or use the simplistic
-  terminal program in this repo: `<root>/terminal/terminal.py /dev/ttyUSB1`
+  terminal program in this repo: `<root>/shell/shell.py /dev/ttyUSB1`
 - When using a dumb terminal, press left on the GBA dpad to enter dumb
   pass-through mode.
-- (the terminal.py program will only send data to the GBA after a `return`. The
+- (the shell.py program will only send data to the GBA after a `return`. The
   GBA program will only exit the read loop after detecting a `return`. The GBA
   will send back the bytes you've sent it)
 - (the read-buffer of the GBA program is 4096 bytes)
 
 ## protocols and terminal program
 
-The GBA test program and the included terminal.py program supports two protocols:
+The GBA test program and the included shell.py program supports two protocols:
 
-- pass-through: this will just read incoming bytes into an array, scan for a ret
+- passthrough: this will just read incoming bytes into an array, scan for a ret
   character and then print those bytes to screen.
 
 - Gbaser (the default): This is a very simple communication protocol. The first
@@ -192,11 +192,26 @@ The GBA test program and the included terminal.py program supports two protocols
 
 ## sending multiboot programs
 
-This setup supports loading multiboot programs. So GBA roms with the `.mb` suffix.
+You can also send and execute multiboot programs, so GBA roms with the `.mb` suffix.
 
-Just use the `terminal.py` program with as the argument of the `--multiboot` parameter your multiboot file:
+Just use the `shell.py` program with as the argument of the `--multiboot`
+parameter your multiboot file:
 
-    ./terminal/terminal.py --multiboot /home/zeno/tmp/iso-snake.mb /dev/ttyUSB0
+    ./shell/shell.py --multiboot ~/iso-snake.mb /dev/ttyUSB0
+
+## sending binary blobs
+
+You can also send binary blobs to any GBA memory location. In this way you can
+for example load bitmaps, sprites, palettes or tiled backgrounds interactively
+from your computer terminal, instead of having to compile and load your whole
+program to say a flash cart every time you make a change.
+
+To do this you can for example use Grit to create a palette and data file from
+your image, and send them to the GBA one after the other with the shell. The
+below invocation is equivalent to the `--multiboot` example above, except that
+the GBA won't branch to 0x02000000 (it's a different Gbaser type):
+
+    ../rath/shell/shell.py --binary-blob /home/zeno/tmp/iso-snake.mb --binary-loc 0x02000000 /dev/ttyUSB0
 
 ## gotchas
 

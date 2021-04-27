@@ -5,6 +5,10 @@
 #include "stdio.h"
 #include "uart.h"
 
+// PSA: don't put print statement in your UART receive handlers if you are still
+// receiveing data. The GBA won't keep up with the sender, you will drop
+// packets, and you will have a bad time.
+
 char g_rcv_buffer[UART_RCV_BUFFER_SIZE];
 struct circ_buff g_uart_rcv_buffer;
 
@@ -74,8 +78,19 @@ u32 crc32(u32 crc, char *buf, size_t len) {
     return ~crc;
 }
 
-void write_multiboot(s32 offset, char data) {
-  *(char*)(MEM_EWRAM + offset) = data;
+void write_bin(s32 mem, char data) {
+  *(char*)(mem) = data;
+}
+
+u32 rcv_word() {
+  u32 word = 0;
+  for(s32 i = 0; i < 4; i++) {
+    // wait until we have a full byte (the recv data flag will go to 0 and sd will
+    // go high)
+    while(REG_SIOCNT & 0x0020);
+    word = (word >> 8) | (REG_SIODATA8 << 24);
+  }
+  return word;
 }
 
 s32 rcv_uart_gbaser(struct circ_buff* circ, char* type, char* status) {
@@ -83,18 +98,27 @@ s32 rcv_uart_gbaser(struct circ_buff* circ, char* type, char* status) {
   char data;
   u32 our_crc = 0;
   u32 their_crc = 0;
-  *type = GBASER_ERROR;
+  *status = GBASER_ERROR;
 
   // first get message type - 1 byte
   while(REG_SIOCNT & 0x0020);
   *type = REG_SIODATA8;
 
   // then get data length - 4 bytes
-  for(s32 i = 0; i < 4; i++) {
-    // wait until we have a full byte (the recv data flag will go to 0 and sd will
-    // go high)
-    while(REG_SIOCNT & 0x0020);
-    len = (len >> 8) | (REG_SIODATA8 << 24);
+  len = rcv_word();
+
+  // get offset for multiboot or general binary blob
+  u32 offset = 0;
+  if(*type == GBASER_BINARY || *type == GBASER_MULTIBOOT) {
+    for(s32 i = 0; i < 4; i++) {
+      // wait until we have a full byte (the recv data flag will go to 0 and sd will
+      // go high)
+      while(REG_SIOCNT & 0x0020);
+      data = REG_SIODATA8;
+      our_crc = crc32(our_crc, &data, 1);
+      offset = (offset >> 8) | (data << 24);
+    }
+    len = len - 4;
   }
 
   // get data - len bytes
@@ -104,10 +128,10 @@ s32 rcv_uart_gbaser(struct circ_buff* circ, char* type, char* status) {
     // calculate the crc inline
     our_crc = crc32(our_crc, &data, 1);
     // write data to the appropriate place
-    if (*type == 1)
+    if (*type == GBASER_STRING)
       write_circ_char(circ, data);
-    else if (*type == 2)
-      write_multiboot(i, data);
+    else if (*type == GBASER_BINARY || *type == GBASER_MULTIBOOT)
+      write_bin(offset + i, data);
   }
 
   // get crc - 4 bytes
@@ -128,9 +152,9 @@ s32 rcv_uart_gbaser(struct circ_buff* circ, char* type, char* status) {
   }
 
   // let's go crazy, we jump to the multiboot start!
-  if (*type == 2)
+  if (*type == GBASER_MULTIBOOT)
     asm("mov pc, #0x02000000");
-  
+
   return len;
 }
 
@@ -163,7 +187,28 @@ void snd_uart_gbaser(char out[], s32 len, char type) {
 }
 
 
-// uart IRQ routine
+// single char interface
+int rcv_char(void) {
+  while(!circ_bytes_available(&g_uart_rcv_buffer)) {
+    VBlankIntrWait();
+  }
+  char out;
+  read_circ_char(&g_uart_rcv_buffer, &out);
+  return out;
+}
+
+void snd_char(s32 character) {
+  char out = (char)character;
+
+  // wait until the send queue is empty
+  while(REG_SIOCNT & SIO_SEND_DATA);
+  // bung our byte into the data register
+  REG_SIODATA8 = out;
+}
+
+
+
+// uart IRQ routines
 void handle_uart_ret() {
 
   // the error bit is reset when reading REG_SIOCNT
@@ -191,7 +236,7 @@ void handle_uart_ret() {
   }
 }
 
-// uart IRQ routine
+
 void handle_uart_gbaser() {
   // the error bit is reset when reading REG_SIOCNT
   if (REG_SIOCNT & SIO_ERROR) {
@@ -208,11 +253,11 @@ void handle_uart_gbaser() {
     // error processing received message, CRC mismatch
     if(len == -1) {
       snd_uart_gbaser("", 0, gbaser_status);
+    } else {
+      char ok[] = "'s all ok, mate";
+      // send ack = 0 back over serial line
+      snd_uart_gbaser(ok, strlen(ok), GBASER_OK);
     }
-
-    char ok[] = "'s all ok, mate";
-    // send ack = 0 back over serial line
-    snd_uart_gbaser(ok, strlen(ok), GBASER_OK);
   }
 
   if (!(REG_SIOCNT & SIO_SEND_DATA)) {
