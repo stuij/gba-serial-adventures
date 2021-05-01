@@ -135,14 +135,14 @@ def print_remote_output(residue):
             process_remote(read)
 
 
-def send_binary(file, offset, msg_type):
+def send_binary(file, offset, msg_type, want_reply=True):
     with open(file, 'rb') as fp:
         print(msg_type)
         bytes = bytearray(fp.read())
-        send_bytes(bytes, offset, msg_type)
+        send_bytes(bytes, offset, msg_type, want_reply)
 
 
-def send_bytes(bytes, offset, msg_type):
+def send_bytes(bytes, offset, msg_type, want_reply=True):
     offset_bytes = offset.to_bytes(4, 'little', signed=False)
     print("binary length: {0}".format(hex(len(bytes))))
     payload = offset_bytes + bytes
@@ -150,7 +150,8 @@ def send_bytes(bytes, offset, msg_type):
     to_ser = make_msg(msg_type, payload)
     print("to ser: {0}".format(hex(len(to_ser))))
     SER.write(to_ser)
-    get_gbaser_reply()
+    if want_reply:
+        get_gbaser_reply()
 
 
 def set_reg(nr, reg):
@@ -177,7 +178,7 @@ def send_file(file):
 
 def send_multiboot(file):
     print("sending multiboot rom, please wait..")
-    send_binary(file, 0x02000000, Mtype.multiboot.value)
+    send_binary(file, 0x02000000, Mtype.multiboot.value, want_reply=False)
 
 def gbaser_loop():
     if RATH:
