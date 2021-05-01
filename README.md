@@ -11,6 +11,8 @@ This setup can also be used to load multiboot programs.
 
 This is a tutorial and simple code example to test UART transfers with this setup. An option to load multiboot programs is included.
 
+This will work for Linux, Windows and will work for OSX as well.
+
 
 ![GBA UART demo](uart.jpeg?raw=true "See, it works.")
 
@@ -164,10 +166,11 @@ steps (in any order):
 - start the compiled rom on your GBA
 - On the terminal computer, check what port it's on. On Linux do a diff between
   two invocations of `ls /dev/tty*` with and without the cable plugged in. It's
-  often on /dev/ttyUSB0. Not sure how to find out on Windows, but I believe it
-  should be `COMx`, where `x` is a number.
+  often on /dev/ttyUSB0. On Windows: `Device Manager` -> `Ports (COM & LPT)` ->
+  `USB Serial Port (COMx)`, where `x` is a number. `COMx` is the port id.
 - start your favorite serial communication program or use the simplistic
-  terminal program in this repo: `<root>/shell/shell.py /dev/ttyUSB1`
+  terminal program in this repo: `<root>/shell/shell.py /dev/ttyUSB1` for Linux,
+  or `python <root>\shell\shell.py COMx` for Windows.
 - When using a dumb terminal, press left on the GBA dpad to enter dumb
   pass-through mode.
 - (the shell.py program will only send data to the GBA after a `return`. The
@@ -211,7 +214,35 @@ your image, and send them to the GBA one after the other with the shell. The
 below invocation is equivalent to the `--multiboot` example above, except that
 the GBA won't branch to 0x02000000 (it's a different Gbaser type):
 
-    ../rath/shell/shell.py --binary-blob /home/zeno/tmp/iso-snake.mb --binary-loc 0x02000000 /dev/ttyUSB0
+    ./shell/shell.py --binary-blob ~/tmp/iso-snake.mb --binary-loc 0x02000000 /dev/ttyUSB0
+
+## binary blob example: mode 3 background
+
+As an extension of sending binary blobs, you can basically program your GBA from
+your computer. You can put bytes into any memory region you want, including the
+IO registers. So you can set up `REG_DISPCNT`, move the x and y values of
+sprites, etc..
+
+`shell.py` includes the `--mode3-bg` option to demonstrate this. It sets up
+`REG_DISPCNT` to mode 3, and copies the bytes in the file given as argument to
+`--mode3-bg` to `MEM_VRAM`.
+
+Say you have a file called `splash.png`. You can use grit to convert it to a
+binary blob like so, which will output a file called `splash.img.bin`:
+
+    grit splash.bmp -gb -gB16 -ftb
+
+Then call shell.py:
+
+    ./shell/shell.py --mode3-bg splash.img.bin /dev/ttyUSB0
+
+This will call the python function called `set_mode3_bg`, which starts to look
+quite a bit like programming on your GBA itself, except for that you have access
+to your local filesystem:
+
+    def set_mode3_bg(file):
+        set_reg(DCNT_MODE3 | DCNT_BG2, REG_DISPCNT)
+        send_binary(file, MEM_VRAM, Mtype.binary.value)
 
 ## gotchas
 

@@ -78,10 +78,6 @@ u32 crc32(u32 crc, char *buf, size_t len) {
     return ~crc;
 }
 
-void write_bin(s32 mem, char data) {
-  *(char*)(mem) = data;
-}
-
 u32 rcv_word() {
   u32 word = 0;
   for(s32 i = 0; i < 4; i++) {
@@ -118,9 +114,16 @@ s32 rcv_uart_gbaser(struct circ_buff* circ, char* type, char* status) {
       our_crc = crc32(our_crc, &data, 1);
       offset = (offset >> 8) | (data << 24);
     }
+    if((len & 1) || (offset & 1)) {
+      printc("message length or offset aren't halfword aligned!");
+      printc("this will end in tears..");
+      printc("message length: 0x%08x\n", len);
+      printc("offset: 0x%08x\n", offset);
+    }
     len = len - 4;
   }
 
+  u32 bin_half = 0;
   // get data - len bytes
   for(s32 i = 0; i < len; i++) {
     while(REG_SIOCNT & 0x0020);
@@ -130,8 +133,14 @@ s32 rcv_uart_gbaser(struct circ_buff* circ, char* type, char* status) {
     // write data to the appropriate place
     if (*type == GBASER_STRING)
       write_circ_char(circ, data);
-    else if (*type == GBASER_BINARY || *type == GBASER_MULTIBOOT)
-      write_bin(offset + i, data);
+    else if (*type == GBASER_BINARY || *type == GBASER_MULTIBOOT) {
+      // PPU mem regions can only addressed with 16 bits or over
+      if((offset + i) & 1) {
+        *(u16*)(offset + i - 1) = bin_half | data << 8;
+      } else {
+        bin_half = data;
+      }
+    }
   }
 
   // get crc - 4 bytes

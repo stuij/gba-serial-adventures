@@ -20,6 +20,17 @@ import struct
 import sys
 import zlib
 
+# GBA defs for asset test/remote programming demo:
+REG_BASE = 0x04000000
+REG_DISPCNT = REG_BASE + 0x0000
+
+# mode3 demo
+DCNT_MODE3 = 0x0003
+DCNT_BG2 = 0x0400
+
+MEM_VRAM = 0x06000000
+
+
 class Mtype(Enum):
     undefined = 0x00
     string = 0x01
@@ -35,6 +46,7 @@ RATH = False
 def init(port, baudrate, rtscts):
     global SER
     SER = serial.Serial(port, baudrate, timeout=1, rtscts=rtscts)
+    print(SER)
 
 def make_msg(kind, data):
     length = len(data)
@@ -95,7 +107,7 @@ def get_gbaser_reply():
         print("CRCs - ours: '{:08x}', theirs: '{:08x}'".format(our_crc, their_crc))
 
     rest = reply[crc_begin + 4:] # rest
-    return rest
+    return type, rest
 
 
 def print_remote_output(residue):
@@ -127,19 +139,34 @@ def send_binary(file, offset, msg_type):
     with open(file, 'rb') as fp:
         print(msg_type)
         bytes = bytearray(fp.read())
-        offset_bytes = offset.to_bytes(4, 'little', signed=False)
-        print("binary length: {0}".format(hex(len(bytes))))
-        payload = offset_bytes + bytes
-        print("total bytes: {0}".format(hex(len(payload))))
-        to_ser = make_msg(msg_type, payload)
-        print("to ser: {0}".format(hex(len(to_ser))))
-        SER.write(to_ser)
+        send_bytes(bytes, offset, msg_type)
+
+
+def send_bytes(bytes, offset, msg_type):
+    offset_bytes = offset.to_bytes(4, 'little', signed=False)
+    print("binary length: {0}".format(hex(len(bytes))))
+    payload = offset_bytes + bytes
+    print("total bytes: {0}".format(hex(len(payload))))
+    to_ser = make_msg(msg_type, payload)
+    print("to ser: {0}".format(hex(len(to_ser))))
+    SER.write(to_ser)
+    get_gbaser_reply()
+
+
+def set_reg(nr, reg):
+    val = nr.to_bytes(2, 'little', signed=False)
+    send_bytes(val, reg, Mtype.binary.value)
+
+
+def set_mode3_bg(file):
+    set_reg(DCNT_MODE3 | DCNT_BG2, REG_DISPCNT)
+    send_binary(file, MEM_VRAM, Mtype.binary.value)
 
 
 def send_line(line):
     send_gbaser_string(line)
+    msg_type, rest = get_gbaser_reply()
     if RATH:
-        rest = get_gbaser_reply()
         print_remote_output(rest)
 
 
@@ -160,7 +187,9 @@ def gbaser_loop():
 
     if (cmd.startswith("multiboot")):
         send_multiboot(cmd.split(" ")[1].strip())
-    if (cmd.startswith("binary")):
+    elif (cmd.startswith("mode3")):
+        set_mode3_bg(cmd.split(" ")[1].strip())
+    elif (cmd.startswith("binary")):
         arguments = cmd.split(" ")
         send_binary(arguments[1].strip(), int(arguments[2].strip()), Mtype.binary.value)
     elif (cmd.startswith("include")):
@@ -221,6 +250,9 @@ def main():
                         help="binary blob to send to GBA")
     parser.add_argument('--binary-loc', dest="bin_loc",
                         help="location to send the binary blob to")
+    parser.add_argument('--mode3-bg', dest="mode3_bg",
+                        help="set mode3 background to 240x160 raw file")
+
 
 
     args = parser.parse_args()
@@ -229,6 +261,8 @@ def main():
 
     if(args.multiboot):
         send_multiboot(args.multiboot)
+    elif(args.mode3_bg):
+        set_mode3_bg(args.mode3_bg)
     elif(args.bin_blob):
         if not args.bin_loc:
             print("when sending a binary blob, you need to specify the memory location with `--binary-loc`")
