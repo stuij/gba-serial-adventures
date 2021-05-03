@@ -160,10 +160,6 @@ s32 rcv_uart_gbaser(struct circ_buff* circ, char* type, char* status) {
     *status = GBASER_OK;
   }
 
-  // let's go crazy, we jump to the multiboot start!
-  if (*type == GBASER_MULTIBOOT)
-    asm("mov pc, #0x02000000");
-
   return len;
 }
 
@@ -267,6 +263,10 @@ void handle_uart_gbaser() {
       // send ack = 0 back over serial line
       snd_uart_gbaser(ok, strlen(ok), GBASER_OK);
     }
+
+    // let's go crazy, we jump to the multiboot start!
+    if (gbaser_type == GBASER_MULTIBOOT)
+      asm("mov pc, #0x02000000");
   }
 
   if (!(REG_SIOCNT & SIO_SEND_DATA)) {
