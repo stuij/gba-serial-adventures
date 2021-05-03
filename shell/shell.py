@@ -23,12 +23,39 @@ import zlib
 # GBA defs for asset test/remote programming demo:
 REG_BASE = 0x04000000
 REG_DISPCNT = REG_BASE + 0x0000
+REG_BG0CNT = REG_BASE + 0x0008
 
 # mode3 demo
 DCNT_MODE3 = 0x0003
 DCNT_BG2 = 0x0400
 
 MEM_VRAM = 0x06000000
+MEM_VRAM_OBJ = 0x06010000
+MEM_PAL	= 0x05000000
+MEM_PAL_OBJ = 0x05000200
+
+# obj demo + tiling bg demo
+DCNT_OBJ = 0x1000
+DCNT_OBJ_1D = 0x0040
+
+# set up BG0 for a 4bpp 64x32t map, using
+# using charblock 0 and screenblock 31
+# REG_BG0CNT= BG_CBB(0) | BG_SBB(30) | BG_4BPP | BG_REG_64x32;
+# REG_DISPCNT= DCNT_OBJ | DCNT_OBJ_1D | DCNT_MODE0 | DCNT_BG0;
+DCNT_MODE0 = 0x0000
+DCNT_BG0 = 0x0100
+BG_4BPP = 0
+BG_8BPP	= 0x0080
+BG_REG_64x32 = 0x4000
+SCRBLK_SIZE = 0x800
+
+BG_CBB_SHIFT = 2
+def BG_CBB(n):
+    return n << BG_CBB_SHIFT
+
+BG_SBB_SHIFT = 8
+def BG_SBB(n):
+    return n << BG_SBB_SHIFT
 
 
 class Mtype(Enum):
@@ -135,14 +162,14 @@ def print_remote_output(residue):
             process_remote(read)
 
 
-def send_binary(file, offset, msg_type, want_reply=True):
+def send_binary(file, offset, msg_type):
     with open(file, 'rb') as fp:
         print(msg_type)
         bytes = bytearray(fp.read())
-        send_bytes(bytes, offset, msg_type, want_reply)
+        send_bytes(bytes, offset, msg_type)
 
 
-def send_bytes(bytes, offset, msg_type, want_reply=True):
+def send_bytes(bytes, offset, msg_type):
     offset_bytes = offset.to_bytes(4, 'little', signed=False)
     print("binary length: {0}".format(hex(len(bytes))))
     payload = offset_bytes + bytes
@@ -150,8 +177,7 @@ def send_bytes(bytes, offset, msg_type, want_reply=True):
     to_ser = make_msg(msg_type, payload)
     print("to ser: {0}".format(hex(len(to_ser))))
     SER.write(to_ser)
-    if want_reply:
-        get_gbaser_reply()
+    get_gbaser_reply()
 
 
 def set_reg(nr, reg):
@@ -162,6 +188,19 @@ def set_reg(nr, reg):
 def set_mode3_bg(file):
     set_reg(DCNT_MODE3 | DCNT_BG2, REG_DISPCNT)
     send_binary(file, MEM_VRAM, Mtype.binary.value)
+
+
+def set_tile_bg(prefix_path):
+    set_reg(DCNT_OBJ | DCNT_OBJ_1D | BG_CBB(0) | BG_SBB(30) | BG_8BPP | BG_REG_64x32, REG_BG0CNT)
+    set_reg(DCNT_OBJ | DCNT_OBJ_1D | DCNT_MODE0 | DCNT_BG0, REG_DISPCNT)
+    send_binary(prefix_path + '.img.bin', MEM_VRAM, Mtype.binary.value)
+    send_binary(prefix_path + '.pal.bin', MEM_PAL, Mtype.binary.value)
+    send_binary(prefix_path + '.map.bin', MEM_VRAM + SCRBLK_SIZE * 30, Mtype.binary.value)
+
+
+def set_sprite_gfx(prefix_path):
+    send_binary(prefix_path + '.img.bin', MEM_VRAM_OBJ, Mtype.binary.value)
+    send_binary(prefix_path + '.pal.bin', MEM_PAL_OBJ, Mtype.binary.value)
 
 
 def send_line(line):
@@ -178,7 +217,7 @@ def send_file(file):
 
 def send_multiboot(file):
     print("sending multiboot rom, please wait..")
-    send_binary(file, 0x02000000, Mtype.multiboot.value, want_reply=False)
+    send_binary(file, 0x02000000, Mtype.multiboot.value)
 
 def gbaser_loop():
     if RATH:
@@ -188,8 +227,12 @@ def gbaser_loop():
 
     if (cmd.startswith("multiboot")):
         send_multiboot(cmd.split(" ")[1].strip())
-    elif (cmd.startswith("mode3")):
+    elif (cmd.startswith("mode3-bg")):
         set_mode3_bg(cmd.split(" ")[1].strip())
+    elif (cmd.startswith("tile-bg")):
+        set_tile_bg(cmd.split(" ")[1].strip())
+    elif (cmd.startswith("sprite-gfx")):
+        set_sprite_gfx(cmd.split(" ")[1].strip())
     elif (cmd.startswith("binary")):
         arguments = cmd.split(" ")
         send_binary(arguments[1].strip(), int(arguments[2].strip()), Mtype.binary.value)
@@ -253,8 +296,10 @@ def main():
                         help="location to send the binary blob to")
     parser.add_argument('--mode3-bg', dest="mode3_bg",
                         help="set mode3 background to 240x160 raw file")
-
-
+    parser.add_argument('--tile-bg', dest="tile_bg",
+                        help="set tiles, palette data and tile map of mode0 bg from common prefix of files in same dir. ex: `assets/brin`")
+    parser.add_argument('--sprite-gfx', dest="sprite_gfx",
+                        help="set tiles and palette data of sprite already initialized from common prefix of files in same dir. ex: `assets/ramio`")
 
     args = parser.parse_args()
     RATH = args.rath
@@ -264,6 +309,10 @@ def main():
         send_multiboot(args.multiboot)
     elif(args.mode3_bg):
         set_mode3_bg(args.mode3_bg)
+    elif(args.tile_bg):
+        set_tile_bg(args.tile_bg)
+    elif(args.sprite_gfx):
+        set_sprite_gfx(args.sprite_gfx)
     elif(args.bin_blob):
         if not args.bin_loc:
             print("when sending a binary blob, you need to specify the memory location with `--binary-loc`")
