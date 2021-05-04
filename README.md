@@ -1,18 +1,27 @@
-(I'm hedging my bets with this repo name. I'd want to add more serial setup tutorials. For example, I bought a bunch of Gameboy Advance wireless adaptors that I should do something with. It's just a GBA UART demo so far though.)
+(I'm hedging my bets with this repo name. I'd want to add more serial setup
+tutorials. For example, I bought a bunch of Gameboy Advance wireless adaptors
+that I should do something with. So far it's all about the GBA UART mode.)
 
 # Gameboy Advance UART demo
 
 It turns out you don't need an Xboo, MBV2, Arduino, own microchip etc.. setup to
-communicate with a Gameboy Advance over the link port. A run-of-the-mill USB-to-UART cable
-will do fine. And as an interface program any old UART app will probably do as
-well.
+communicate with a Gameboy Advance over the link port. A run-of-the-mill
+USB-to-UART cable will do fine. And as an interface program any old UART app
+will probably do as well.
 
-This setup can also be used to load multiboot programs.
+This projects includes a tutorial, a python shell to interact with the GBA, and
+simple code examples to test UART transfers with this setup. The code has been
+tested on Linux, Windows and will work for OSX as well.
 
-This is a tutorial and simple code example to test UART transfers with this setup. An option to load multiboot programs is included.
+The examples include loading multiboot programs and uploading backgrounds and
+sprites on the fly to a running GBA.
 
-This will work for Linux, Windows and will work for OSX as well.
+Under the covers we use a home-grown simple communication protocol between the
+shell and the GBA, Gbaser, that consists of a message type, a data length, a
+payload and a CRC checksum so we can reliably send data of different types.
 
+The UART specific code in this repo is available as a library to include in
+other projects.
 
 ![GBA UART demo](uart.jpeg?raw=true "See, it works.")
 
@@ -86,7 +95,11 @@ Whatever you type is sent over the specified serial port after you hit
 return. The program asynchronously prints whatever the GBA sends back on the
 screen. Read below for more info on its features and operation.
 
-You can also choose your favorite terminal program. GNU screen should work on Linux. Make sure you enable serial flow control if your cable (and the GBA program) supports it. If you use it with the demo program in this repo. Press left on the dpad to set the GBA into pass-through mode, which is compatible with dumb terminals.
+You can also choose your favorite terminal program. GNU screen should work on
+Linux. Make sure you enable serial flow control if your cable (and the GBA
+program) supports it. If you use it with the demo program in this repo. Press
+left on the dpad to set the GBA into pass-through mode, which is compatible with
+dumb terminals.
 
 ### compiler toolchain
 
@@ -98,7 +111,9 @@ for writing text to screen
 
 ## hardware setup
 
-It's just a matter of wiring up the USB cable to the GBA link cable. In my debugging setup, I put male pins on the link cable wires. They plug either into the female end-points of the UART cable or into a breadboard.
+It's just a matter of wiring up the USB cable to the GBA link cable. In my
+debugging setup, I put male pins on the link cable wires. They plug either into
+the female end-points of the UART cable or into a breadboard.
 
 The below schematics should hopefully make it obvious how to wire up both cables:
 
@@ -142,7 +157,8 @@ The below schematics should hopefully make it obvious how to wire up both cables
 
 At a minimum you can get by with GND <-> GND, SO <-> RxD, SI <-> TxD.
 
-![what cable wiring looks like](uart-cable.jpeg?raw=true "My setup. I should make another one, with the cables fused.")
+![what cable wiring looks like](uart-cable.jpeg?raw=true "My setup. I should
+ make another one, with the cables fused.")
 
 ## compiling
 
@@ -216,7 +232,9 @@ the GBA won't branch to 0x02000000 (it's a different Gbaser type):
 
     ./shell/shell.py --binary-blob ~/tmp/iso-snake.mb --binary-loc 0x02000000 /dev/ttyUSB0
 
-## binary blob example: mode 3 background
+## binary blob examples
+
+### mode 3 background
 
 As an extension of sending binary blobs, you can basically program your GBA from
 your computer. You can put bytes into any memory region you want, including the
@@ -243,6 +261,41 @@ to your local filesystem:
     def set_mode3_bg(file):
         set_reg(DCNT_MODE3 | DCNT_BG2, REG_DISPCNT)
         send_binary(file, MEM_VRAM, Mtype.binary.value)
+
+### tiled background
+
+Similarly you can set a tiled background:
+
+    grit brin.png -ftb -mR8
+
+This creates `brin.img.bin`, `brin.map.bin` and `brin.pal.bin`. Pass their
+common prefix to `shell.py` to set the GBA into mode 0 and copy the assets to
+the right locations:
+
+    ./shell/shell.py --tiled-bg brin /dev/ttyUSB0
+
+### sprites
+
+This simple example sets up a 16x32 sprite, including OAM attributes, palette
+and tiles.
+
+    grit ramio.png -ftb -gB4 -gT 000000 -Mw 2 -Mh 4
+
+This creates `ramio.img.bin` and `ramio.pal.bin`. Pass their common prefix to
+`shell.py` to set up the correct sprite mode, set up the attributes of sprite 0,
+and copy the assets to the right locations:
+
+    ./shell/shell.py --sprite ramio /dev/ttyUSB0
+
+## UART library
+
+The usefulness of the UART code has grown big enough for it to be useful as a
+standalone library.
+
+When doing a plain `make`, you also create a C library in `build/libuart` with
+the familiar `include` and `lib` subdirectories, which can be included in other
+projects.
+
 
 ## gotchas
 
