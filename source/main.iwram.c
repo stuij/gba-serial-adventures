@@ -72,6 +72,10 @@ s32 main() {
 		NULL,			        		// Default font (sys8) 
 		NULL);					      // Default renderer (se_drawg_s)
 
+	// Initialize sprites (outside of screen)
+	OBJ_ATTR obj_attr = {160, 240, 0, 0};
+	for(int i=0; i<128; i++) oam_mem[i] = obj_attr;
+
   // Set to UART mode
   init_circ_buff(&g_uart_rcv_buffer, g_rcv_buffer, UART_RCV_BUFFER_SIZE);
   init_uart(SIO_BAUD_115200);

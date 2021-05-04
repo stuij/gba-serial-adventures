@@ -33,6 +33,7 @@ MEM_VRAM = 0x06000000
 MEM_VRAM_OBJ = 0x06010000
 MEM_PAL	= 0x05000000
 MEM_PAL_OBJ = 0x05000200
+MEM_OAM = 0x7000000
 
 # obj demo + tiling bg demo
 DCNT_OBJ = 0x1000
@@ -48,6 +49,10 @@ BG_4BPP = 0
 BG_8BPP	= 0x0080
 BG_REG_64x32 = 0x4000
 SCRBLK_SIZE = 0x800
+
+# sprite setup
+ATTR0_TALL = 0x8000
+ATTR1_SIZE_16x32 = 0x8000
 
 BG_CBB_SHIFT = 2
 def BG_CBB(n):
@@ -191,14 +196,17 @@ def set_mode3_bg(file):
 
 
 def set_tile_bg(prefix_path):
-    set_reg(DCNT_OBJ | DCNT_OBJ_1D | BG_CBB(0) | BG_SBB(30) | BG_8BPP | BG_REG_64x32, REG_BG0CNT)
+    set_reg(BG_CBB(0) | BG_SBB(30) | BG_8BPP | BG_REG_64x32, REG_BG0CNT)
     set_reg(DCNT_OBJ | DCNT_OBJ_1D | DCNT_MODE0 | DCNT_BG0, REG_DISPCNT)
     send_binary(prefix_path + '.img.bin', MEM_VRAM, Mtype.binary.value)
     send_binary(prefix_path + '.pal.bin', MEM_PAL, Mtype.binary.value)
     send_binary(prefix_path + '.map.bin', MEM_VRAM + SCRBLK_SIZE * 30, Mtype.binary.value)
 
 
-def set_sprite_gfx(prefix_path):
+def set_sprite(prefix_path):
+    set_reg(DCNT_OBJ | DCNT_OBJ_1D | DCNT_MODE0 | DCNT_BG0, REG_DISPCNT)
+    set_reg(100 | ATTR0_TALL, MEM_OAM) # attr0
+    set_reg(150 | ATTR1_SIZE_16x32, MEM_OAM + 2) # attr1
     send_binary(prefix_path + '.img.bin', MEM_VRAM_OBJ, Mtype.binary.value)
     send_binary(prefix_path + '.pal.bin', MEM_PAL_OBJ, Mtype.binary.value)
 
@@ -232,7 +240,7 @@ def gbaser_loop():
     elif (cmd.startswith("tile-bg")):
         set_tile_bg(cmd.split(" ")[1].strip())
     elif (cmd.startswith("sprite-gfx")):
-        set_sprite_gfx(cmd.split(" ")[1].strip())
+        set_sprite(cmd.split(" ")[1].strip())
     elif (cmd.startswith("binary")):
         arguments = cmd.split(" ")
         send_binary(arguments[1].strip(), int(arguments[2].strip()), Mtype.binary.value)
@@ -298,8 +306,8 @@ def main():
                         help="set mode3 background to 240x160 raw file")
     parser.add_argument('--tile-bg', dest="tile_bg",
                         help="set tiles, palette data and tile map of mode0 bg from common prefix of files in same dir. ex: `assets/brin`")
-    parser.add_argument('--sprite-gfx', dest="sprite_gfx",
-                        help="set tiles and palette data of sprite already initialized from common prefix of files in same dir. ex: `assets/ramio`")
+    parser.add_argument('--sprite', dest="sprite",
+                        help="set tiles, palette data and attributes of sprite from common prefix of files in same dir. ex: `assets/ramio`. Expects ")
 
     args = parser.parse_args()
     RATH = args.rath
@@ -311,8 +319,8 @@ def main():
         set_mode3_bg(args.mode3_bg)
     elif(args.tile_bg):
         set_tile_bg(args.tile_bg)
-    elif(args.sprite_gfx):
-        set_sprite_gfx(args.sprite_gfx)
+    elif(args.sprite):
+        set_sprite(args.sprite)
     elif(args.bin_blob):
         if not args.bin_loc:
             print("when sending a binary blob, you need to specify the memory location with `--binary-loc`")

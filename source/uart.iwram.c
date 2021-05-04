@@ -1,8 +1,7 @@
-#include <string.h>
-
+// #include <string.h>
 #include "circular_buffer.h"
-#include "console.h"
-#include "stdio.h"
+// #include "console.h"
+// #include "stdio.h"
 #include "uart.h"
 
 // PSA: don't put print statement in your UART receive handlers if you are still
@@ -115,10 +114,10 @@ s32 rcv_uart_gbaser(struct circ_buff* circ, char* type, char* status) {
       offset = (offset >> 8) | (data << 24);
     }
     if((len & 1) || (offset & 1)) {
-      printc("message length or offset aren't halfword aligned!");
-      printc("this will end in tears..");
-      printc("message length: 0x%08x\n", len);
-      printc("offset: 0x%08x\n", offset);
+      // printc("message length or offset aren't halfword aligned!");
+      // printc("this will end in tears..");
+      // printc("message length: 0x%08x\n", len);
+      // printc("offset: 0x%08x\n", offset);
     }
     len = len - 4;
   }
@@ -151,9 +150,9 @@ s32 rcv_uart_gbaser(struct circ_buff* circ, char* type, char* status) {
 
   // check crc
   if(their_crc != our_crc) {
-    printc("message length: 0x%08x\n", len);
-    printc("       our CRC: 0x%08x\n", our_crc);
-    printc("     their CRC: 0x%08x\n", their_crc);
+    // printc("message length: 0x%08x\n", len);
+    // printc("       our CRC: 0x%08x\n", our_crc);
+    // printc("     their CRC: 0x%08x\n", their_crc);
     *status = GBASER_CRC_ERROR;
     return -1;
   } else {
