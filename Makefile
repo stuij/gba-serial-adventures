@@ -120,6 +120,8 @@ export VPATH	:=									\
 	$(foreach dir, $(DATADIRS), $(CURDIR)/$(dir))
 
 export DEPSDIR	:=	$(CURDIR)/$(BUILD)
+export LIBDIR := $(DEPSDIR)/libuart
+export LIBUART := $(LIBDIR)/lib/libuart.a
 
 # --- List source and data files ---
 
@@ -141,6 +143,8 @@ export OFILES	:=									\
 	$(CFILES:.c=.o) $(CPPFILES:.cpp=.o)				\
 	$(SFILES:.s=.o)
 
+export UARTFILES := uart.iwram.o circular_buffer.iwram.o
+
 # --- Create include and library search paths ---
 export INCLUDE	:=									\
 	$(foreach dir,$(INCDIRS),-I$(CURDIR)/$(dir))	\
@@ -157,6 +161,9 @@ export LIBPATHS	:=	-L$(CURDIR) $(foreach dir,$(LIBDIRS),-L$(dir)/lib)
 # --- Create $(BUILD) if necessary, and run this makefile from there ---
 
 $(BUILD):
+	@[ -d $(LIBDIR)/lib ] || mkdir -p $(LIBDIR)/lib
+	@[ -d $(LIBDIR)/include ] || mkdir -p $(LIBDIR)/include
+	@cp $(CURDIR)/source/uart.h $(CURDIR)/source/circular_buffer.h $(LIBDIR)/include
 	@[ -d $@ ] || mkdir -p $@
 	@make --no-print-directory -C $(BUILD) -f $(CURDIR)/Makefile
 
@@ -173,12 +180,21 @@ DEPENDS	:=	$(OFILES:.o=.d)
 
 # --- Main targets ----
 
-$(OUTPUT).gba	:	$(OUTPUT).elf
+$(OUTPUT).gba	:	$(OUTPUT).elf $(LIBUART)
 
 $(OUTPUT).elf	:	$(OFILES)
 
-
 -include $(DEPENDS)
+
+# --- Lib rules ----
+
+$(LIBUART): $(UARTFILES)
+
+%.a : $(OFILES)
+	@echo Building $@
+	@rm -f $@
+	@$(AR) -crs $@ $^
+	$(PREFIX)nm -Sn $@ > $(basename $(notdir $@)).map
 
 
 endif		# End BUILD switch
