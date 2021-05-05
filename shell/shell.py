@@ -78,7 +78,6 @@ RATH = False
 def init(port, baudrate, rtscts):
     global SER
     SER = serial.Serial(port, baudrate, timeout=1, rtscts=rtscts)
-    print(SER)
 
 def make_msg(kind, data):
     length = len(data)
@@ -129,14 +128,21 @@ def get_gbaser_reply():
     our_crc = zlib.crc32(data)
     their_crc = int.from_bytes(reply[crc_begin:crc_begin + 4], 'little', signed=False)
 
-    if our_crc == their_crc:
-        pass # print("got reply: {0}".format(reply))
+    if msg_type == Mtype.ret_crc_error.value:
+        print("ERROR: CRCs of sent message didn't match on GBA")
+    elif msg_type == Mtype.ret_error.value:
+        print("ERROR: general error detected on GBA")
+    elif msg_type == Mtype.ret_ok.value:
+        if our_crc == their_crc:
+            pass # print("got reply: {0}".format(reply))
+        else:
+            print("ERROR: CRCs don't match")
+            print(reply)
+            print("data_len: '{:08x}', type: {:x}".format(data_len, msg_type))
+            print("data: '{0}'".format(data))
+            print("CRCs - ours: '{:08x}', theirs: '{:08x}'".format(our_crc, their_crc))
     else:
-        print("ERROR: CRCs don't match")
-        print(reply)
-        print("data_len: '{:08x}', type: {:x}".format(data_len, msg_type))
-        print("data: '{0}'".format(data))
-        print("CRCs - ours: '{:08x}', theirs: '{:08x}'".format(our_crc, their_crc))
+        print("ERROR: message type `{0}` not expected".format(hex(msg_type)))
 
     rest = reply[crc_begin + 4:] # rest
     return type, rest
@@ -169,18 +175,18 @@ def print_remote_output(residue):
 
 def send_binary(file, offset, msg_type):
     with open(file, 'rb') as fp:
-        print(msg_type)
         bytes = bytearray(fp.read())
         send_bytes(bytes, offset, msg_type)
 
 
 def send_bytes(bytes, offset, msg_type):
     offset_bytes = offset.to_bytes(4, 'little', signed=False)
-    print("binary length: {0}".format(hex(len(bytes))))
+    # print("binary length: {0}".format(hex(len(bytes))))
     payload = offset_bytes + bytes
-    print("total bytes: {0}".format(hex(len(payload))))
+    # print("total bytes: {0}".format(hex(len(payload))))
     to_ser = make_msg(msg_type, payload)
-    print("to ser: {0}".format(hex(len(to_ser))))
+    # print("to ser: {0}".format(hex(len(to_ser))))
+    # print("---")
     SER.write(to_ser)
     get_gbaser_reply()
 
@@ -195,7 +201,7 @@ def set_mode3_bg(file):
     send_binary(file, MEM_VRAM, Mtype.binary.value)
 
 
-def set_tile_bg(prefix_path):
+def set_tiled_bg(prefix_path):
     set_reg(BG_CBB(0) | BG_SBB(30) | BG_8BPP | BG_REG_64x32, REG_BG0CNT)
     set_reg(DCNT_OBJ | DCNT_OBJ_1D | DCNT_MODE0 | DCNT_BG0, REG_DISPCNT)
     send_binary(prefix_path + '.img.bin', MEM_VRAM, Mtype.binary.value)
@@ -237,9 +243,9 @@ def gbaser_loop():
         send_multiboot(cmd.split(" ")[1].strip())
     elif (cmd.startswith("mode3-bg")):
         set_mode3_bg(cmd.split(" ")[1].strip())
-    elif (cmd.startswith("tile-bg")):
-        set_tile_bg(cmd.split(" ")[1].strip())
-    elif (cmd.startswith("sprite-gfx")):
+    elif (cmd.startswith("tiled-bg")):
+        set_tiled_bg(cmd.split(" ")[1].strip())
+    elif (cmd.startswith("sprite")):
         set_sprite(cmd.split(" ")[1].strip())
     elif (cmd.startswith("binary")):
         arguments = cmd.split(" ")
@@ -304,7 +310,7 @@ def main():
                         help="location to send the binary blob to")
     parser.add_argument('--mode3-bg', dest="mode3_bg",
                         help="set mode3 background to 240x160 raw file")
-    parser.add_argument('--tile-bg', dest="tile_bg",
+    parser.add_argument('--tiled-bg', dest="tiled_bg",
                         help="set tiles, palette data and tile map of mode0 bg from common prefix of files in same dir. ex: `assets/brin`")
     parser.add_argument('--sprite', dest="sprite",
                         help="set tiles, palette data and attributes of sprite from common prefix of files in same dir. ex: `assets/ramio`. Expects ")
@@ -317,8 +323,8 @@ def main():
         send_multiboot(args.multiboot)
     elif(args.mode3_bg):
         set_mode3_bg(args.mode3_bg)
-    elif(args.tile_bg):
-        set_tile_bg(args.tile_bg)
+    elif(args.tiled_bg):
+        set_tiled_bg(args.tiled_bg)
     elif(args.sprite):
         set_sprite(args.sprite)
     elif(args.bin_blob):
