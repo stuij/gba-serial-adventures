@@ -61,7 +61,9 @@ this will depend on how your client UART program behaves as well.
 
 With SIO_CTS unset, you only need RX, TX and ground.
 
-I believe/hope the code example should work with either setup.
+The UART library/example code works with either setup.
+
+I find that in practice flow control is more of a hassle than a benefit, so flow control is set to off by default in the Makefile and in the shell.py script.
 
 ## what do you need
 
@@ -96,8 +98,7 @@ return. The program asynchronously prints whatever the GBA sends back on the
 screen. Read below for more info on its features and operation.
 
 You can also choose your favorite terminal program. GNU screen should work on
-Linux. Make sure you enable serial flow control if your cable (and the GBA
-program) supports it. If you use it with the demo program in this repo. Press
+Linux. If you use it with the demo program in this repo. Press
 left on the dpad to set the GBA into pass-through mode, which is compatible with
 dumb terminals.
 

@@ -19,7 +19,7 @@ TONCLIB		:= $(DEVKITARM)/../libtonc
 # Turn on/off flow control. For example for when either the
 # link cable doesn't have SD, SC wires or when the USB serial cable doesn't have
 # CTS/RTS wires. See README.md for more info.
-FLOW_CONTROL=1
+FLOW_CONTROL=0
 
 
 # ---------------------------------------------------------------------

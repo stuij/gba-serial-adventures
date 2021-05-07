@@ -297,8 +297,8 @@ def main():
     parser.add_argument('-b', '--baudrate', type=int, default=115200,
                         choices=[9600, 38400, 57600, 115200],
                         help='the baud-rate of the connection')
-    parser.add_argument('--no-rtscts', dest="rtscts", action='store_false',
-                        help="don't use RTS/CTS hardware flow control")
+    parser.add_argument('--rtscts', dest="rtscts", action='store_true',
+                        help="use RTS/CTS hardware flow control")
     parser.add_argument('--passthrough', dest="passthrough", action='store_true',
                         help="use pass-through mode of sending data, instead of Gbaser")
     parser.add_argument('--rath', dest="rath", action='store_true',
