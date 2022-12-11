@@ -5,6 +5,32 @@
 #include "console.h"
 #include "uart.h"
 
+void handle_console_uart_ret() {
+  // the error bit is reset when reading REG_SIOCNT
+  if (REG_SIOCNT & SIO_ERROR) {
+    write_console_line("SIO error\n");
+  }
+
+  // receiving data is time-sensitive so we handle this first without wasting CPU
+  // cycles on say writing to the console
+  if (!(REG_SIOCNT & SIO_RECV_DATA)) {
+    // reserve an arbitrary amount of bytes for the rcv buffer
+    char in[4096];
+    u32 size = rcv_uart_ret(in);
+
+    // null-terminating so we can write to the console with write_console_line
+    in[size] = 0;
+    write_console_line(in);
+
+    // send line back over serial line
+    snd_uart_ret(in, size);
+  }
+
+  if (!(REG_SIOCNT & SIO_SEND_DATA)) {
+    // do something
+  }
+}
+
 // I think the FIFO is completely transparent to the user code, compared to no
 // FIFO. It basically buys you 3 extra sent chars worth of cycles.
 void toggle_fifo() {
@@ -38,7 +64,7 @@ void do_keys() {
     }
     if(key_hit(KEY_LEFT)) {
       write_console_line("passthrough uart irq mode set\n");
-      irq_add(II_SERIAL, handle_uart_ret);
+      irq_add(II_SERIAL, handle_console_uart_ret);
     }
     if(key_hit(KEY_RIGHT)) {
       write_console_line("Gbaser uart irq mode set\n");

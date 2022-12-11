@@ -1,8 +1,6 @@
-// #include <string.h>
 #include "circular_buffer.h"
-// #include "console.h"
-// #include "stdio.h"
 #include "uart.h"
+#include <string.h>
 
 // PSA: don't put print statement in your UART receive handlers if you are still
 // receiveing data. The GBA won't keep up with the sender, you will drop
@@ -34,12 +32,14 @@ void init_uart(u16 uart) {
 
 /// 'check for return' versions of rcv_uart/snd_uart
 
+int UART_RET_MAX = 256;
+
 // we collect bytes in `in` until we see a `return`
 s32 rcv_uart_ret(char in[]) {
   // make sure there's no '\n' in `last`
   char last = ' ';
   s32 i;
-  for(i = 0; i < 4096 && last != '\n'; i++) {
+  for(i = 0; i < UART_RET_MAX && last != '\n'; i++) {
     // sd is assumed to be low
     // wait until we have a full byte (the recv data flag will go to 0 and sd will
     // go high)
@@ -190,7 +190,6 @@ void snd_uart_gbaser(char out[], s32 len, char type) {
   }
 }
 
-
 // single char interface
 int rcv_char(void) {
   while(!circ_bytes_available(&g_uart_rcv_buffer)) {
@@ -212,24 +211,22 @@ void snd_char(s32 character) {
 
 
 
-// uart IRQ routines
-void handle_uart_ret() {
+// example uart IRQ routines
 
+// This is effectively a dummy. It will receive lines over uart, and will echo
+// them to the sender.
+void handle_uart_ret() {
   // the error bit is reset when reading REG_SIOCNT
   if (REG_SIOCNT & SIO_ERROR) {
-    write_console_line("SIO error\n");
+    // handle SIO error
   }
 
   // receiving data is time-sensitive so we handle this first without wasting CPU
   // cycles on say writing to the console
   if (!(REG_SIOCNT & SIO_RECV_DATA)) {
     // reserve an arbitrary amount of bytes for the rcv buffer
-    char in[4096];
+    char in[UART_RET_MAX];
     u32 size = rcv_uart_ret(in);
-
-    // null-terminating so we can write to the console with write_console_line
-    in[size] = 0;
-    write_console_line(in);
 
     // send line back over serial line
     snd_uart_ret(in, size);
@@ -240,11 +237,11 @@ void handle_uart_ret() {
   }
 }
 
-
+// read uart data in Gbaser format, and write to ring buffer
 void handle_uart_gbaser() {
   // the error bit is reset when reading REG_SIOCNT
   if (REG_SIOCNT & SIO_ERROR) {
-    write_console_line("SIO error\n");
+    // handle SIO error
   }
 
   // receiving data is time-sensitive so we handle this first without wasting CPU

@@ -17,6 +17,5 @@ void init_circ_buff(struct circ_buff* circ, char* buff, int max);
 bool write_circ_char(struct circ_buff* circ, char data);
 bool read_circ_char(struct circ_buff* circ, char* data);
 s32 circ_bytes_available(struct circ_buff* circ);
-void print_circ(struct circ_buff* circ);
 
 #endif // CIRCULAR_BUFFER_H

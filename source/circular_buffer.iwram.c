@@ -1,6 +1,4 @@
 #include "circular_buffer.h"
-#include "console.h"
-
 
 void init_circ_buff(struct circ_buff* circ, char* buff, int max) {
   circ->cur_size = 0;
@@ -38,10 +36,4 @@ bool read_circ_char(struct circ_buff* circ, char* data) {
 
 s32 circ_bytes_available(struct circ_buff* circ) {
   return circ->cur_size;
-}
-
-void print_circ(struct circ_buff* circ) {
-  printc("circular buffer:\n");
-  printc("cur size: %d, max size: %d, read_index: %d, write_index: %d\n",
-         circ->cur_size, circ->max_size, circ->read_index, circ->write_index);
 }
