@@ -110,6 +110,11 @@ DevkitPro works for me
 
 for writing text to screen
 
+### GBA and a flashcart
+
+The GBA multiboot without a cart doesn't follow UART, so you first need to load
+the compiled rom with a flashcart to enable UART mode.
+
 ## hardware setup
 
 It's just a matter of wiring up the USB cable to the GBA link cable. In my
@@ -165,8 +170,9 @@ At a minimum you can get by with GND <-> GND, SO <-> RxD, SI <-> TxD.
 
 Check the Makefile to see if the top 3 parameters work for you:
 
-- PATH - path to your toolchain binaries
+- TOOLCHAINDIR - path to devkitarm binaries
 - TONCLIB - path to tonclib
+- TOOLSDIR - path to devkitpro tools' binaries
 - FLOW_CONTROL - flow control on or off
 
 Type `make` in the root of the repo.
