@@ -1,18 +1,33 @@
 # ---------------------------------------------------------------------
 # SETUP
 # ---------------------------------------------------------------------
+ifeq ($(DEVKITARM),)
+  $(error DEVKITARM is not set)
+endif
+
+ifeq ($(DEVKITPRO),)
+  $(error DEVKITPRO is not set)
+endif
 
 # --- No implicit rules ---
 
 .SUFFIXES:
 
+# --- toolchain path ---
+
+TOOLCHAINDIR := $(DEVKITARM)/bin
+
 # --- Main path ---
 
-export PATH	:=	$(DEVKITARM)/bin:$(PATH)
+export PATH	:=	$(TOOLCHAINDIR):$(PATH)
 
 # --- tonc lib location ---
 
-TONCLIB		:= $(DEVKITARM)/../libtonc
+TONCLIB		:= $(DEVKITPRO)/libtonc
+
+# --- tools location ---
+
+TOOLSDIR	:= $(DEVKITPRO)/tools/bin
 
 # --- flow control ---
 
